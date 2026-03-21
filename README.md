@@ -3,6 +3,10 @@
 > AI-powered legal co-founder for Indian entrepreneurs.
 > **React frontend + Python FastAPI backend + Deterministic rule engine + PDF generation + SQLite storage.**
 
+## Live App
+
+https://legalease-nn231j2cc-virajthukrul0404-stacks-projects.vercel.app/
+
 ---
 
 ## 🏗️ Architecture
