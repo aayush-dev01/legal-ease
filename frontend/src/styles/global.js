@@ -630,9 +630,130 @@ export const globalStyles = `
     background: rgba(255,255,255,0.04) !important;
   }
 
-  /* Scroll container for GSAP trigger */
-  .scroll-container {
+  /* Document showcase */
+  .le-doc-showcase {
     position: relative;
+    overflow: hidden;
+    padding: 5.5rem 2.5rem;
+    background:
+      radial-gradient(circle at 50% 18%, rgba(255,255,255,0.08), transparent 38%),
+      linear-gradient(180deg, #040404 0%, #080808 100%);
+    border-top: 1px solid var(--ink-border);
+    border-bottom: 1px solid var(--ink-border);
+  }
+  .le-doc-showcase-head {
+    max-width: 640px;
+    margin: 0 auto 3rem;
+    text-align: center;
+  }
+  .le-doc-showcase-head .le-section-sub {
+    margin: 0 auto;
+  }
+  .le-doc-showcase-stage {
+    position: relative;
+    padding: 1rem 0 0.5rem;
+  }
+  .le-doc-showcase-glow {
+    position: absolute;
+    inset: 8% 15% auto;
+    height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+    filter: blur(28px);
+    pointer-events: none;
+  }
+  .le-doc-showcase-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+    align-items: stretch;
+  }
+  .le-doc-card {
+    position: relative;
+    min-height: 280px;
+    padding: 1.4rem;
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+      rgba(10,10,10,0.82);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      0 24px 70px rgba(0,0,0,0.45);
+  }
+  .le-doc-card.featured {
+    transform: translateY(-14px);
+    border-color: rgba(255,255,255,0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      0 32px 90px rgba(0,0,0,0.55);
+  }
+  .le-doc-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .le-doc-card-label {
+    color: rgba(255,255,255,0.34);
+    font-size: 10px;
+    letter-spacing: 2.2px;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    font-family: 'Lato', sans-serif;
+  }
+  .le-doc-card-title {
+    color: var(--text-primary);
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    line-height: 1.15;
+    font-weight: 700;
+  }
+  .le-doc-card-badge {
+    flex-shrink: 0;
+    border: 1px solid;
+    border-radius: 999px;
+    padding: 0.36rem 0.72rem;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .le-doc-card-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin-bottom: 0.85rem;
+  }
+  .le-doc-card-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .le-doc-card-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.72);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .le-doc-card-line:last-child {
+    border-bottom: none;
+  }
+  .le-doc-card-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 0.4rem;
+    box-shadow: 0 0 14px currentColor;
   }
 
   /* Loading bar white fill */
@@ -643,13 +764,28 @@ export const globalStyles = `
     transition: width 0.6s ease;
   }
 
-  /* Mobile document animation fallback */
-  @media (max-width: 768px) {
-    .doc-animation-desktop { display: none; }
-    .doc-animation-mobile { display: flex; }
+  @media (max-width: 960px) {
+    .le-doc-showcase-grid {
+      grid-template-columns: 1fr;
+    }
+    .le-doc-card.featured {
+      transform: none;
+    }
   }
-  @media (min-width: 769px) {
-    .doc-animation-desktop { display: block; }
-    .doc-animation-mobile { display: none; }
+  @media (max-width: 768px) {
+    .le-doc-showcase {
+      padding: 4rem 1.5rem;
+    }
+    .le-doc-card {
+      min-height: auto;
+      padding: 1.2rem;
+    }
+    .le-doc-card-top {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .le-doc-card-badge {
+      white-space: normal;
+    }
   }
 `;
