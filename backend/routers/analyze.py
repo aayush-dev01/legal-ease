@@ -19,6 +19,7 @@ router = APIRouter()
 
 BASE_URL     = os.getenv("BASE_URL", "http://localhost:8000")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+GENERATED_REPORTS_DIR = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
 
 
 def _resolve_runtime_urls(request: Request) -> tuple[str, str]:
@@ -165,7 +166,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
     }
 
     # ── Step 7: Generate PDF ──────────────────────────────────────────────────
-    pdf_path = f"generated_reports/{report_id}.pdf"
+    pdf_path = os.path.join(GENERATED_REPORTS_DIR, f"{report_id}.pdf")
     try:
         generate_pdf(full_data, pdf_path)
     except Exception as e:

@@ -9,6 +9,7 @@ import os
 from services.storage_service import get_report, list_reports
 
 router = APIRouter()
+GENERATED_REPORTS_DIR = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
 
 
 @router.get("/report/{report_id}")
@@ -23,7 +24,7 @@ def get_report_data(report_id: str):
 @router.get("/report/{report_id}/pdf")
 def download_pdf(report_id: str):
     """Download the PDF for a report."""
-    pdf_path = f"generated_reports/{report_id.upper()}.pdf"
+    pdf_path = os.path.join(GENERATED_REPORTS_DIR, f"{report_id.upper()}.pdf")
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF not found")
     return FileResponse(

@@ -10,13 +10,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routers import analyze, report
-
 BASE_DIR = os.path.dirname(__file__)
-GENERATED_REPORTS_DIR = os.path.join(BASE_DIR, "generated_reports")
 
 # Load .env before anything else.
 load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+from routers import analyze, report
+
+GENERATED_REPORTS_DIR = os.getenv(
+    "GENERATED_REPORTS_DIR",
+    os.path.join(BASE_DIR, "generated_reports"),
+)
 
 gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 if not gemini_api_key or gemini_api_key == "YOUR_GEMINI_API_KEY_HERE":
