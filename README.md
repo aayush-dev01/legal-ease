@@ -5,7 +5,7 @@
 
 ## Live App
 
-https://legalease-nn231j2cc-virajthukrul0404-stacks-projects.vercel.app/
+Set this after you connect your own deployment.
 
 ---
 
