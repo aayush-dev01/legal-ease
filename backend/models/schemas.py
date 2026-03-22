@@ -2,7 +2,7 @@
 LegalEase AI – Pydantic Schemas
 """
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Any
 
 
@@ -11,7 +11,7 @@ class AnalyzeRequest(BaseModel):
     location: str
     scale:    str
     mode:     str
-    email:    Optional[str] = None   # optional — if provided, PDF is emailed
+    email:    Optional[str] = None
 
     @field_validator("idea")
     @classmethod
@@ -29,6 +29,18 @@ class AnalyzeRequest(BaseModel):
         if len(v.strip()) < 2:
             raise ValueError("Location is required")
         return v.strip()
+
+    @field_validator("email")
+    @classmethod
+    def valid_email(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Please enter a valid email address")
+        return v
 
 
 class ScoreDetail(BaseModel):

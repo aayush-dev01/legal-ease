@@ -788,4 +788,185 @@ export const globalStyles = `
       white-space: normal;
     }
   }
+
+  .le-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 4px;
+  }
+  .le-nav-link {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .le-nav-link:hover,
+  .le-nav-link.active {
+    color: var(--text-primary);
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.05);
+  }
+  .le-page-shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 3rem 2rem 4rem;
+  }
+  .le-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .le-page-eyebrow {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .le-page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+  }
+  .le-page-sub {
+    color: var(--text-muted);
+    max-width: 680px;
+    line-height: 1.7;
+    font-size: 14px;
+  }
+  .le-page-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .le-stat-grid,
+  .le-panel-grid,
+  .le-tool-grid,
+  .le-quick-grid {
+    display: grid;
+    gap: 1rem;
+  }
+  .le-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 1.25rem;
+  }
+  .le-panel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 1.25rem;
+  }
+  .le-tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 1.25rem;
+  }
+  .le-stat-card,
+  .le-panel-card,
+  .le-tool-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+    border: 1px solid var(--ink-border);
+    border-radius: 18px;
+    padding: 1.25rem;
+  }
+  .le-stat-label,
+  .le-tool-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .le-stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.3rem;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .le-stat-note,
+  .le-tool-result {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .le-panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+  }
+  .le-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .le-quick-action {
+    text-align: left;
+    padding: 0.95rem 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.025);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .le-quick-action:hover {
+    background: rgba(255,255,255,0.05);
+    transform: translateY(-1px);
+  }
+  .le-quick-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .le-feature-list {
+    display: grid;
+    gap: 10px;
+  }
+  .le-feature-line {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+    padding-left: 14px;
+    position: relative;
+  }
+  .le-feature-line::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+
+  @media (max-width: 960px) {
+    .le-stat-grid,
+    .le-panel-grid,
+    .le-tool-grid,
+    .le-quick-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 768px) {
+    .le-nav-links {
+      display: none;
+    }
+    .le-page-shell {
+      padding: 2rem 1rem 3rem;
+    }
+    .le-stat-grid,
+    .le-panel-grid,
+    .le-tool-grid,
+    .le-quick-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 `;

@@ -26,6 +26,36 @@ async function callAnalyzeAPI({ idea, location, scale, mode, email }) {
   } catch (e) { clearTimeout(timer); throw e; }
 }
 
+async function fetchReportAPI(reportId) {
+  const response = await fetch(`${API_BASE}/api/report/${encodeURIComponent(reportId)}`);
+  if (!response.ok) throw new Error("Report not found");
+  return response.json();
+}
+
+async function fetchReportsAPI() {
+  const response = await fetch(`${API_BASE}/api/reports`);
+  if (!response.ok) throw new Error("Failed to load reports");
+  return response.json();
+}
+
+function dedupeReports(reports) {
+  const seen = new Map();
+  (reports || []).forEach((report) => {
+    if (!report?.report_id) return;
+    seen.set(report.report_id, report);
+  });
+  return Array.from(seen.values());
+}
+
+function formatScaleLabel(scale) {
+  return ({
+    solo: "Solo",
+    startup: "Startup",
+    sme: "SME",
+    enterprise: "Enterprise",
+  })[scale] || scale || "Unknown";
+}
+
 function scoreColor(score, type) {
   if (type === "risk") {
     if (score <= 30) return { c: "#4CAF7D", bg: "rgba(76,175,125,0.12)", label: "Low Risk" };
@@ -573,11 +603,19 @@ function LandingPage({ onStart }) {
 }
 
 // ─── INPUT PAGE ───────────────────────────────────────────────────────────────
-function InputPage({ onAnalyze }) {
-  const [idea, setIdea] = useState(""); const [location, setLocation] = useState("Maharashtra");
-  const [scale, setScale] = useState("startup"); const [mode, setMode] = useState("both"); const [email, setEmail] = useState("");
+function InputPage({ onAnalyze, initialValues }) {
+  const [idea, setIdea] = useState(initialValues?.idea || ""); const [location, setLocation] = useState(initialValues?.location || "Maharashtra");
+  const [scale, setScale] = useState(initialValues?.scale || "startup"); const [mode, setMode] = useState(initialValues?.mode || "both"); const [email, setEmail] = useState(initialValues?.email || "");
   const suggestions = ["Cloud kitchen in Mumbai","EdTech platform for UPSC prep","Organic farm in Pune","Fintech lending app","Yoga studio franchise","Export garments business","D2C cosmetics brand","Software dev agency"];
   const states = ["Andhra Pradesh","Assam","Bihar","Chhattisgarh","Delhi","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Odisha","Punjab","Rajasthan","Tamil Nadu","Telangana","Uttar Pradesh","Uttarakhand","West Bengal"];
+  useEffect(() => {
+    if (!initialValues) return;
+    setIdea(initialValues.idea || "");
+    setLocation(initialValues.location || "Maharashtra");
+    setScale(initialValues.scale || "startup");
+    setMode(initialValues.mode || "both");
+    setEmail(initialValues.email || "");
+  }, [initialValues]);
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeInOut" }} style={{ background:"var(--ink)", minHeight:"100vh", padding:"2rem 0" }}>
       <div className="le-input-section">
@@ -1088,11 +1126,238 @@ function DashboardPage({ onOpen, onBack }) {
 }
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
+function WorkspacePage({ onOpen, onBack, onCompare, onAnalyzeNew }) {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetchReportsAPI().then((data) => {
+      setReports(data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const totalReports = reports.length;
+  const stateCount = new Set(reports.map((r) => r.location).filter(Boolean)).size;
+  const startupCount = reports.filter((r) => r.scale === "startup").length;
+  const latest = reports[0];
+
+  return (
+    <div style={{ background:"var(--ink)", minHeight:"100vh" }}>
+      <div className="le-page-shell">
+        <div className="le-page-header">
+          <div>
+            <div className="le-page-eyebrow">Workspace</div>
+            <h2 className="le-page-title">Founder Dashboard</h2>
+            <p className="le-page-sub">Recent analyses, quick actions, and a clearer snapshot of how the compliance engine is being used.</p>
+          </div>
+          <div className="le-page-actions">
+            <button className="le-btn-ghost" onClick={onCompare}>Compare Reports</button>
+            <button className="le-btn-primary" style={{ fontSize:13, padding:"10px 20px" }} onClick={onAnalyzeNew}>New Analysis</button>
+            <button className="le-btn-outline" onClick={onBack} style={{ fontSize:13 }}>Home</button>
+          </div>
+        </div>
+        <div className="le-stat-grid">
+          <div className="le-stat-card">
+            <div className="le-stat-label">Total Reports</div>
+            <div className="le-stat-value">{totalReports}</div>
+            <div className="le-stat-note">Stored and reopenable.</div>
+          </div>
+          <div className="le-stat-card">
+            <div className="le-stat-label">States Covered</div>
+            <div className="le-stat-value">{stateCount}</div>
+            <div className="le-stat-note">Jurisdictions represented in recent runs.</div>
+          </div>
+          <div className="le-stat-card">
+            <div className="le-stat-label">Startup Reports</div>
+            <div className="le-stat-value">{startupCount}</div>
+            <div className="le-stat-note">Startup-scale analyses in the dataset.</div>
+          </div>
+          <div className="le-stat-card">
+            <div className="le-stat-label">Latest</div>
+            <div className="le-stat-value">{latest ? `#${latest.id}` : "—"}</div>
+            <div className="le-stat-note">{latest ? `${latest.location} · ${formatScaleLabel(latest.scale)}` : "No reports yet."}</div>
+          </div>
+        </div>
+        <div className="le-panel-grid">
+          <div className="le-panel-card">
+            <div className="le-panel-title">Quick Actions</div>
+            <div className="le-quick-grid">
+              <button className="le-quick-action" onClick={onAnalyzeNew}>Run a fresh business analysis</button>
+              <button className="le-quick-action" onClick={onCompare}>Compare two stored reports</button>
+              <button className="le-quick-action" onClick={() => latest && onOpen(latest.id)} disabled={!latest}>Open the latest report</button>
+            </div>
+          </div>
+          <div className="le-panel-card">
+            <div className="le-panel-title">What changed</div>
+            <div className="le-feature-list">
+              <div className="le-feature-line">Dashboard for reopening reports without sharing raw IDs</div>
+              <div className="le-feature-line">Dedicated compare page for side-by-side legal tradeoffs</div>
+              <div className="le-feature-line">Founder tools page for threshold and classification checks</div>
+            </div>
+          </div>
+        </div>
+        {loading && <div style={{ color:"var(--text-muted)", textAlign:"center", padding:"3rem" }}>Loading reports...</div>}
+        {!loading && reports.length === 0 && <div style={{ color:"var(--text-muted)", textAlign:"center", padding:"3rem", background:"rgba(255,255,255,0.025)", border:"1px solid var(--ink-border)", borderRadius:"var(--r-md)" }}>No reports generated yet. Run your first analysis!</div>}
+        {!loading && reports.length > 0 && (
+          <div className="le-panel-card">
+            <div className="le-panel-title">Recent Analyses</div>
+            {reports.map(r => (
+              <div key={r.id} className="le-report-row" onClick={() => onOpen(r.id)}>
+                <div className="le-report-row-id">#{r.id}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div className="le-report-row-biz" style={{ marginBottom:3 }}>{r.idea?.slice(0,90)}{r.idea?.length>90?"...":""}</div>
+                  <div className="le-report-row-meta">{r.location} · {formatScaleLabel(r.scale)} · {new Date(r.created_at).toLocaleDateString("en-IN",{ day:"numeric", month:"short", year:"numeric" })}</div>
+                </div>
+                <span style={{ fontSize:12, color:"rgba(201,168,76,0.65)", fontWeight:600, flexShrink:0 }}>View →</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompareWorkspacePage({ seedReports, onOpen, onBack, onAnalyzeNew }) {
+  const [reports, setReports] = useState(dedupeReports(seedReports));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const summaries = await fetchReportsAPI();
+        const ids = summaries.slice(0, 6).map((item) => item.id).filter(Boolean);
+        const fetched = await Promise.all(ids.map((id) => fetchReportAPI(id).catch(() => null)));
+        if (!cancelled) setReports(dedupeReports([...(seedReports || []), ...fetched.filter(Boolean)]));
+      } catch (e) {
+        if (!cancelled) setError("Could not load enough reports for comparison.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [seedReports]);
+
+  return (
+    <div style={{ background:"var(--ink)", minHeight:"100vh" }}>
+      <div className="le-page-shell">
+        <div className="le-page-header">
+          <div>
+            <div className="le-page-eyebrow">Decision Support</div>
+            <h2 className="le-page-title">Compare Business Reports</h2>
+            <p className="le-page-sub">Review feasibility, risk, and compliance load side by side before picking the business model or state to pursue.</p>
+          </div>
+          <div className="le-page-actions">
+            <button className="le-btn-primary" style={{ fontSize:13, padding:"10px 20px" }} onClick={onAnalyzeNew}>Run Another Analysis</button>
+            <button className="le-btn-outline" onClick={onBack} style={{ fontSize:13 }}>Back</button>
+          </div>
+        </div>
+        <div className="le-panel-card">
+          {loading && <div style={{ color:"var(--text-muted)" }}>Loading reports for comparison...</div>}
+          {!loading && error && <div style={{ color:"var(--red)" }}>{error}</div>}
+          {!loading && <ComparisonView reports={reports} />}
+        </div>
+        {reports.length > 0 && (
+          <div className="le-panel-card">
+            <div className="le-panel-title">Open a full report</div>
+            <div className="le-quick-grid">
+              {reports.slice(0, 6).map((report) => (
+                <button key={report.report_id} className="le-quick-action" onClick={() => onOpen(report.report_id)}>
+                  {report.business_name || report.report_id}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FounderToolsPage({ onAnalyzeIdea, onBack }) {
+  const [annualTurnover, setAnnualTurnover] = useState(18);
+  const [investment, setInvestment] = useState(2);
+  const [employees, setEmployees] = useState(6);
+  const [state, setState] = useState("Maharashtra");
+
+  const gstHint = annualTurnover >= 40 ? "GST registration is likely required for many goods businesses." : annualTurnover >= 20 ? "You may cross service thresholds depending on activity and state." : "You may be below common GST thresholds, but category-specific rules can still apply.";
+  const msmeClass = investment <= 1 ? "Micro" : investment <= 10 ? "Small" : "Medium";
+  const payrollRisk = employees >= 10 ? "Labour law obligations become materially stronger here." : "Employment compliance is lighter, but contracts and records still matter.";
+
+  const presets = [
+    "Cloud kitchen in Mumbai with 6 employees and Swiggy/Zomato delivery",
+    "D2C skincare brand selling online across India with warehousing in Pune",
+    "UPSC EdTech platform with subscription payments and recorded courses",
+    "Fintech platform offering small business invoice financing in Bengaluru",
+  ];
+
+  return (
+    <div style={{ background:"var(--ink)", minHeight:"100vh" }}>
+      <div className="le-page-shell">
+        <div className="le-page-header">
+          <div>
+            <div className="le-page-eyebrow">Founder Tools</div>
+            <h2 className="le-page-title">Plan Before You Analyze</h2>
+            <p className="le-page-sub">Quick threshold checks and starter prompts for founders who want a sharper first analysis instead of a vague one-line query.</p>
+          </div>
+          <div className="le-page-actions">
+            <button className="le-btn-outline" onClick={onBack} style={{ fontSize:13 }}>Back</button>
+          </div>
+        </div>
+        <div className="le-tool-grid">
+          <div className="le-tool-card">
+            <div className="le-panel-title">GST Threshold Lens</div>
+            <div className="le-tool-label">Annual turnover estimate: Rs. {annualTurnover}L</div>
+            <input className="le-calc-slider" type="range" min={1} max={100} step={1} value={annualTurnover} onChange={(e) => setAnnualTurnover(Number(e.target.value))} />
+            <div className="le-tool-result">{gstHint}</div>
+          </div>
+          <div className="le-tool-card">
+            <div className="le-panel-title">MSME Classification</div>
+            <div className="le-tool-label">Plant / equipment investment: Rs. {investment}Cr</div>
+            <input className="le-calc-slider" type="range" min={0} max={50} step={1} value={investment} onChange={(e) => setInvestment(Number(e.target.value))} />
+            <div className="le-tool-result">Estimated bucket: <strong>{msmeClass}</strong> enterprise.</div>
+          </div>
+          <div className="le-tool-card">
+            <div className="le-panel-title">Hiring Readiness</div>
+            <div className="le-tool-label">Planned employees: {employees}</div>
+            <input className="le-calc-slider" type="range" min={0} max={100} step={1} value={employees} onChange={(e) => setEmployees(Number(e.target.value))} />
+            <div className="le-tool-result">{payrollRisk}</div>
+          </div>
+          <div className="le-tool-card">
+            <div className="le-panel-title">State Launch Prompt</div>
+            <div className="le-tool-label">Preferred state</div>
+            <select className="le-meta-select" value={state} onChange={(e) => setState(e.target.value)}>
+              {["Maharashtra","Karnataka","Delhi","Telangana","Tamil Nadu","Gujarat","West Bengal"].map((option) => <option key={option}>{option}</option>)}
+            </select>
+            <div className="le-tool-result">Use this to pressure-test licenses before committing to launch in {state}.</div>
+          </div>
+        </div>
+        <div className="le-panel-card">
+          <div className="le-panel-title">Jump-start prompts</div>
+          <div className="le-quick-grid">
+            {presets.map((preset) => (
+              <button key={preset} className="le-quick-action" onClick={() => onAnalyzeIdea({ idea: preset, location: state, scale: "startup", mode: "both", email: "" })}>
+                {preset}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const getInitialPage = () => {
     const path = window.location.pathname;
     if (path === "/report" || path.startsWith("/report/")) return "viewer";
     if (path === "/reports" || path === "/dashboard") return "dashboard";
+    if (path === "/compare") return "compare";
+    if (path === "/tools") return "tools";
+    if (path === "/analyze") return "input";
     return "landing";
   };
   const getInitialReportId = () => {
@@ -1109,6 +1374,7 @@ export default function App() {
   const [inputData, setInputData] = useState(null);
   const [error, setError] = useState(null);
   const [savedReports, setSavedReports] = useState([]);
+  const [draftInput, setDraftInput] = useState(null);
 
   const navigate = (newPage, reportId = null) => {
     if (newPage === "viewer" && reportId) {
@@ -1117,6 +1383,8 @@ export default function App() {
       setViewReportId(rid);
     }
     else if (newPage === "dashboard") window.history.pushState({}, "", "/reports");
+    else if (newPage === "compare") window.history.pushState({}, "", "/compare");
+    else if (newPage === "tools") window.history.pushState({}, "", "/tools");
     else if (newPage === "landing") window.history.pushState({}, "", "/");
     else if (newPage === "input") window.history.pushState({}, "", "/analyze");
     setPage(newPage);
@@ -1127,6 +1395,21 @@ export default function App() {
     window.addEventListener("popstate", handler);
     return () => window.removeEventListener("popstate", handler);
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("le_saved_reports");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setSavedReports(parsed);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("le_saved_reports", JSON.stringify(savedReports.slice(0, 10)));
+    } catch {}
+  }, [savedReports]);
 
   async function handleAnalyze(params) {
     if (!params.idea.trim()) return;
@@ -1143,6 +1426,13 @@ export default function App() {
   }
 
   const goHome = () => { setResult(null); setError(null); setViewReportId(null); navigate("landing"); };
+  const openInputWithDraft = (draft = null) => { setDraftInput(draft); setResult(null); setError(null); navigate("input"); };
+  const navItems = [
+    ["Analyze", () => openInputWithDraft(null), page === "input" || page === "results" || page === "viewer"],
+    ["Dashboard", () => navigate("dashboard"), page === "dashboard"],
+    ["Compare", () => navigate("compare"), page === "compare"],
+    ["Tools", () => navigate("tools"), page === "tools"],
+  ];
 
   return (
     <div className="le-root">
@@ -1159,6 +1449,11 @@ export default function App() {
           <div><div className="le-nav-name">LegalEase AI</div><div className="le-nav-tag">India · Legal Intelligence</div></div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div className="le-nav-links">
+            {navItems.map(([label, action, active]) => (
+              <button key={label} className={`le-nav-link${active ? " active" : ""}`} onClick={action}>{label}</button>
+            ))}
+          </div>
           {page==="results" && result && <span style={{ fontSize:11, color:"var(--text-muted)" }}>#{result.report_id}</span>}
           <MagneticButton className="le-btn-ghost" style={{ fontSize:11, padding:"5px 12px" }} onClick={() => navigate("dashboard")}>Past Reports</MagneticButton>
           <div className="le-nav-pill">Full Stack</div>
@@ -1178,8 +1473,8 @@ export default function App() {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.35, ease: "easeInOut" }}
         >
-          {page==="landing"   && <LandingPage onStart={() => navigate("input")} />}
-          {page==="input"     && <InputPage onAnalyze={handleAnalyze} />}
+          {page==="landing"   && <LandingPage onStart={() => openInputWithDraft(null)} />}
+          {page==="input"     && <InputPage onAnalyze={handleAnalyze} initialValues={draftInput} />}
           {page==="loading"   && <LoadingPage />}
           {page==="results"   && result && (
             <ResultsPage data={result} input={inputData}
@@ -1189,7 +1484,9 @@ export default function App() {
             />
           )}
           {page==="viewer"    && <ReportViewerPage reportId={viewReportId} onBack={goHome} onAnalyze={handleAnalyze} savedReports={savedReports} />}
-          {page==="dashboard" && <DashboardPage onOpen={id => { setViewReportId(id); navigate("viewer", id); }} onBack={goHome} />}
+          {page==="dashboard" && <WorkspacePage onOpen={id => { setViewReportId(id); navigate("viewer", id); }} onBack={goHome} onCompare={() => navigate("compare")} onAnalyzeNew={() => openInputWithDraft(null)} />}
+          {page==="compare" && <CompareWorkspacePage seedReports={savedReports} onOpen={id => { setViewReportId(id); navigate("viewer", id); }} onBack={() => navigate("dashboard")} onAnalyzeNew={() => openInputWithDraft(null)} />}
+          {page==="tools" && <FounderToolsPage onAnalyzeIdea={(draft) => openInputWithDraft(draft)} onBack={goHome} />}
         </motion.div>
       </AnimatePresence>
     </div>

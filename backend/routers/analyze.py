@@ -20,6 +20,26 @@ router = APIRouter()
 BASE_URL     = os.getenv("BASE_URL", "http://localhost:8000")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+
+def _resolve_runtime_urls(request: Request) -> tuple[str, str]:
+    """Prefer local request/origin URLs during local runs; otherwise fall back to env."""
+    request_base = str(request.base_url).rstrip("/")
+    origin = (request.headers.get("origin") or "").rstrip("/")
+
+    if "127.0.0.1" in request_base or "localhost" in request_base:
+        base_url = request_base
+    else:
+        base_url = BASE_URL.rstrip("/")
+
+    if origin and ("127.0.0.1" in origin or "localhost" in origin):
+        frontend_url = origin
+    elif "127.0.0.1" in request_base or "localhost" in request_base:
+        frontend_url = "http://127.0.0.1:5173"
+    else:
+        frontend_url = FRONTEND_URL.rstrip("/")
+
+    return base_url, frontend_url
+
 # ── Simple in-memory rate limiter ─────────────────────────────────────────────
 # Limits each IP to MAX_REQUESTS analyses per WINDOW_SECONDS
 MAX_REQUESTS    = int(os.getenv("RATE_LIMIT_MAX", "5"))
@@ -105,8 +125,9 @@ async def analyze(req: AnalyzeRequest, request: Request):
     # ── Step 6: Assemble Full Report Data ─────────────────────────────────────
     # report_url points to the FRONTEND report viewer page (what QR opens)
     # pdf_url    points to the raw PDF file
-    report_url = f"{FRONTEND_URL}/report/{report_id}"
-    pdf_url    = f"{BASE_URL}/api/report/{report_id}/pdf"
+    runtime_base_url, runtime_frontend_url = _resolve_runtime_urls(request)
+    report_url = f"{runtime_frontend_url}/report/{report_id}"
+    pdf_url    = f"{runtime_base_url}/api/report/{report_id}/pdf"
 
     full_data = {
         "report_id":    report_id,

@@ -276,11 +276,8 @@ async def enrich_with_ai(
                 await asyncio.sleep(delay)
 
             if resp is not None and resp.status_code == 429:
-                raise GeminiQuotaExceededError(
-                    "AI quota exceeded. Please try again in a few minutes."
-                )
-    except GeminiQuotaExceededError:
-        raise
+                print("[ai_service] Gemini quota exhausted after retries. Using deterministic fallback.")
+                return _fallback_response(idea, location)
     except Exception as exc:
         print(f"[ai_service] Request to Gemini failed: {exc}")
         return _fallback_response(idea, location)
@@ -300,9 +297,8 @@ async def enrich_with_ai(
 
     if "error" in data:
         if str(data["error"].get("code")) == "429":
-            raise GeminiQuotaExceededError(
-                "AI quota exceeded. Please try again in a few minutes."
-            )
+            print("[ai_service] Gemini returned quota error payload. Using deterministic fallback.")
+            return _fallback_response(idea, location)
         print(
             "[ai_service] Gemini returned an error payload. "
             f"Using fallback. Message: {data['error'].get('message', 'Unknown error')}"

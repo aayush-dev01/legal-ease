@@ -152,9 +152,17 @@ def send_report_email(
 
     try:
         ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(config["smtp_host"], config["smtp_port"], context=ctx) as server:
-            server.login(config["smtp_user"], config["smtp_pass"])
-            server.sendmail(config["from_addr"], to_email, msg.as_string())
+        if config["smtp_port"] == 465:
+            with smtplib.SMTP_SSL(config["smtp_host"], config["smtp_port"], context=ctx) as server:
+                server.login(config["smtp_user"], config["smtp_pass"])
+                server.sendmail(config["from_addr"], to_email, msg.as_string())
+        else:
+            with smtplib.SMTP(config["smtp_host"], config["smtp_port"]) as server:
+                server.ehlo()
+                server.starttls(context=ctx)
+                server.ehlo()
+                server.login(config["smtp_user"], config["smtp_pass"])
+                server.sendmail(config["from_addr"], to_email, msg.as_string())
         print(
             f'[email_service] Report email sent from {config["from_addr"]} '
             f'to {to_email} for report {report_id}'

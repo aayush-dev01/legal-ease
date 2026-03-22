@@ -92,19 +92,19 @@ DB_PATH=legalease.db
 cd backend
 
 # Create virtual environment
-python -m venv venv
+python -m venv .venv_clean
 
 # Activate it
 # On Mac/Linux:
-source venv/bin/activate
+source .venv_clean/bin/activate
 # On Windows:
-venv\Scripts\activate
+.venv_clean\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Start the server
-uvicorn main:app --reload --port 8000
+start_backend.cmd
 ```
 
 Backend is now running at: **http://localhost:8000**
