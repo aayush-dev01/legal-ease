@@ -13,6 +13,7 @@ from engines.risk_engine import calculate_risk_score, calculate_feasibility_scor
 from services.ai_service import enrich_with_ai, GeminiQuotaExceededError
 from services.pdf_service import generate_pdf
 from services.storage_service import save_report
+from services.workspace_service import ensure_workspace_seeded
 from services.email_service import send_report_email
 
 router = APIRouter()
@@ -184,6 +185,7 @@ async def analyze(req: AnalyzeRequest, request: Request):
         data=full_data,
         pdf_path=pdf_path,
     )
+    ensure_workspace_seeded(report_id, full_data)
 
     # ── Step 9: Send Email (non-fatal, optional) ──────────────────────────────
     if req.email and pdf_path:

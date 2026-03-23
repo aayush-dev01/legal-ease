@@ -21,12 +21,16 @@ GENERATED_REPORTS_DIR = os.getenv(
     "GENERATED_REPORTS_DIR",
     os.path.join(BASE_DIR, "generated_reports"),
 )
+DOCUMENT_UPLOADS_DIR = os.getenv(
+    "DOCUMENT_UPLOADS_DIR",
+    os.path.join(BASE_DIR, "uploaded_documents"),
+)
 
 gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 if not gemini_api_key or gemini_api_key == "YOUR_GEMINI_API_KEY_HERE":
-    raise RuntimeError(
-        "GEMINI_API_KEY is missing or empty in backend/.env. "
-        "Please set a valid Gemini API key before starting the backend."
+    print(
+        "[main] GEMINI_API_KEY is missing. /api/analyze will fall back to "
+        "deterministic content, but the backend will continue to start."
     )
 
 
@@ -70,7 +74,9 @@ app.include_router(analyze.router, prefix="/api")
 app.include_router(report.router, prefix="/api")
 
 os.makedirs(GENERATED_REPORTS_DIR, exist_ok=True)
+os.makedirs(DOCUMENT_UPLOADS_DIR, exist_ok=True)
 app.mount("/reports", StaticFiles(directory=GENERATED_REPORTS_DIR), name="reports")
+app.mount("/documents", StaticFiles(directory=DOCUMENT_UPLOADS_DIR), name="documents")
 
 
 @app.get("/health")

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import CursorGlow from "./components/CursorGlow";
 import MagneticButton from "./components/MagneticButton";
 import DocumentAnimation from "./components/DocumentAnimation";
@@ -35,6 +36,43 @@ async function fetchReportAPI(reportId) {
 async function fetchReportsAPI() {
   const response = await fetch(`${API_BASE}/api/reports`);
   if (!response.ok) throw new Error("Failed to load reports");
+  return response.json();
+}
+
+async function fetchWorkspaceAPI(reportId) {
+  const response = await fetch(`${API_BASE}/api/report/${encodeURIComponent(reportId)}/workspace`);
+  if (!response.ok) throw new Error("Failed to load workspace");
+  return response.json();
+}
+
+async function updateTaskStatusAPI(reportId, taskKey, status) {
+  const response = await fetch(`${API_BASE}/api/report/${encodeURIComponent(reportId)}/tasks/${encodeURIComponent(taskKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) throw new Error("Failed to update task");
+  return response.json();
+}
+
+async function fetchDashboardSummaryAPI() {
+  const response = await fetch(`${API_BASE}/api/dashboard/summary`);
+  if (!response.ok) throw new Error("Failed to load dashboard summary");
+  return response.json();
+}
+
+async function uploadDocumentAPI(reportId, docKey, file, note) {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (note) formData.append("note", note);
+  const response = await fetch(`${API_BASE}/api/report/${encodeURIComponent(reportId)}/documents/${encodeURIComponent(docKey)}/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to upload document");
+  }
   return response.json();
 }
 
@@ -126,6 +164,10 @@ function Toast({ message, show }) {
   return <div className={`le-toast${show ? " show" : ""}`}>{message}</div>;
 }
 
+function ResultsModal({ children }) {
+  return createPortal(children, document.body);
+}
+
 // ─── FEATURE: SMART SEARCH ───────────────────────────────────────────────────
 function highlight(text, query) {
   if (!query || !text) return text;
@@ -152,6 +194,13 @@ function exportToCSV(data) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a"); a.href = url; a.download = `LegalEase_Report_${data.report_id}.csv`; a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportToExcel(data) {
+  const a = document.createElement("a");
+  a.href = `${API_BASE}/api/report/${encodeURIComponent(data.report_id)}/excel`;
+  a.download = `LegalEase_Report_${data.report_id}.xlsx`;
+  a.click();
 }
 
 // ─── FEATURE: TIMELINE VIEW ──────────────────────────────────────────────────
@@ -693,9 +742,60 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, setModal] = useState(null); // "timeline"|"calculator"|"assistant"|"compare"|"progress"
   const [checkedItems, setCheckedItems] = useState({});
+  const [workspace, setWorkspace] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [workspaceError, setWorkspaceError] = useState("");
+  const [taskSaving, setTaskSaving] = useState("");
+  const [documentSaving, setDocumentSaving] = useState("");
+  const [documentNotes, setDocumentNotes] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState({});
   const [toastMsg, setToastMsg] = useState(""); const [toastShow, setToastShow] = useState(false);
 
   const showToast = (msg) => { setToastMsg(msg); setToastShow(true); setTimeout(() => setToastShow(false), 2800); };
+
+  useEffect(() => {
+    if (!modal) return undefined;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setModal(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [modal]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setWorkspaceLoading(true);
+    setWorkspaceError("");
+    fetchWorkspaceAPI(data.report_id)
+      .then((payload) => {
+        if (cancelled) return;
+        setWorkspace(payload);
+        setDocumentNotes(Object.fromEntries((payload.documents || []).map((doc) => [doc.doc_key, doc.note || ""])));
+        setWorkspaceLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWorkspace(null);
+        setWorkspaceLoading(false);
+        setWorkspaceError("Workspace data could not be loaded.");
+      });
+    return () => { cancelled = true; };
+  }, [data.report_id]);
 
   const shareReport = () => {
     const url = `${window.location.origin}/report/${data.report_id}`;
@@ -724,8 +824,59 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
     "Display all licenses visibly at business premises",
     "Maintain statutory registers as required by law",
   ];
-  const totalChecked = Object.values(checkedItems).filter(Boolean).length;
-  const pct = Math.round((totalChecked / checklistItems.length) * 100);
+  const workspaceTasks = workspace?.tasks || [];
+  const effectiveChecklistItems = workspaceTasks.length > 0 ? workspaceTasks.map((task) => task.title) : checklistItems;
+  const totalChecked = workspaceTasks.length > 0
+    ? workspaceTasks.filter((task) => task.status === "completed").length
+    : Object.values(checkedItems).filter(Boolean).length;
+  const pct = effectiveChecklistItems.length ? Math.round((totalChecked / effectiveChecklistItems.length) * 100) : 0;
+  const documentSummary = workspace?.summary || { document_count: 0, ready_documents: 0 };
+  const documentHealth = (workspace?.documents || []).reduce((acc, doc) => {
+    if (doc.validation?.status === "validated") acc.validated += 1;
+    else if (doc.validation?.status === "review_required") acc.reviewRequired += 1;
+    else if (doc.original_filename) acc.uploaded += 1;
+    else acc.pending += 1;
+    return acc;
+  }, { validated: 0, reviewRequired: 0, uploaded: 0, pending: 0 });
+  const documentsByLicense = (workspace?.documents || []).reduce((acc, doc) => {
+    const key = doc.license_name || "General compliance";
+    acc[key] = acc[key] || [];
+    acc[key].push(doc);
+    return acc;
+  }, {});
+
+  const handleTaskStatus = async (task, status) => {
+    setTaskSaving(task.task_key);
+    try {
+      const nextWorkspace = await updateTaskStatusAPI(data.report_id, task.task_key, status);
+      setWorkspace(nextWorkspace);
+      showToast(status === "completed" ? "Task marked complete" : "Task updated");
+    } catch {
+      showToast("Task update failed");
+    } finally {
+      setTaskSaving("");
+    }
+  };
+
+  const handleDocumentUpload = async (doc) => {
+    const file = selectedFiles[doc.doc_key];
+    if (!file) {
+      showToast("Choose a file first");
+      return;
+    }
+    setDocumentSaving(doc.doc_key);
+    try {
+      const nextWorkspace = await uploadDocumentAPI(data.report_id, doc.doc_key, file, documentNotes[doc.doc_key] || "");
+      setWorkspace(nextWorkspace);
+      setSelectedFiles((current) => ({ ...current, [doc.doc_key]: null }));
+      setDocumentNotes((current) => ({ ...current, [doc.doc_key]: nextWorkspace.documents?.find((item) => item.doc_key === doc.doc_key)?.note || current[doc.doc_key] || "" }));
+      showToast("Document verified and saved");
+    } catch (error) {
+      showToast(error.message || "Document upload failed");
+    } finally {
+      setDocumentSaving("");
+    }
+  };
 
   return (
     <div style={{ background:"var(--ink)" }}>
@@ -742,7 +893,7 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
         </span>
         <div className="le-toolbar">
           <button className="le-share-btn" onClick={shareReport}>🔗 Share</button>
-          <button className="le-export-btn" onClick={() => exportToCSV(data)}>📥 CSV</button>
+          <button className="le-export-btn" onClick={() => exportToExcel(data)}>📥 Excel</button>
           <button className="le-btn-ghost" style={{ fontSize:11, padding:"5px 12px" }} onClick={() => setModal("progress")}>✅ {pct}% Done</button>
           {data.pdf_url && (
             <a href={`${API_BASE}/api/report/${data.report_id}/pdf`} target="_blank" rel="noopener noreferrer">
@@ -755,8 +906,9 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
 
       {/* MODAL */}
       {modal && (
+        <ResultsModal>
         <div className="le-modal-overlay" onClick={e => e.target===e.currentTarget && setModal(null)}>
-          <div className="le-modal">
+          <div className={`le-modal le-modal-${modal}`}>
             <div className="le-modal-header">
               <div className="le-modal-title">
                 {modal==="timeline" && "📅 Action Plan Timeline"}
@@ -779,7 +931,7 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
                     <div className="le-progress-pct">{pct}%</div>
                   </div>
                   <div className="le-progress-bar-outer"><div className="le-progress-bar-inner" style={{ width:`${pct}%` }} /></div>
-                  <div style={{ fontSize:12, color:"var(--text-muted)", marginBottom:"1.25rem" }}>{totalChecked} of {checklistItems.length} tasks completed</div>
+                  <div style={{ fontSize:12, color:"var(--text-muted)", marginBottom:"1.25rem" }}>{totalChecked} of {effectiveChecklistItems.length} tasks completed</div>
                   {checklistItems.map((item,i) => (
                     <div key={i} className={`le-check-item-tracker${checkedItems[i]?" checked":""}`} onClick={() => setCheckedItems(c => ({ ...c, [i]: !c[i] }))}>
                       <div className="le-check-box"><span className="le-check-box-tick">✓</span></div>
@@ -791,6 +943,7 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
             </div>
           </div>
         </div>
+        </ResultsModal>
       )}
 
       <div className="le-results">
@@ -861,6 +1014,7 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
           <div className="le-summary-stat"><div className="le-summary-label">Licenses to Obtain</div><div className="le-summary-val">{data.licenses?.length||0}</div><div className="le-summary-sub">{data.licenses?.filter(l=>l.priority==="critical").length||0} critical priority</div></div>
           <div className="le-summary-stat"><div className="le-summary-label">Legal Risks Found</div><div className="le-summary-val">{data.risks?.length||0}</div><div className="le-summary-sub">{data.risks?.filter(rk=>rk.severity==="high").length||0} high severity</div></div>
           <div className="le-summary-stat"><div className="le-summary-label">Action Steps</div><div className="le-summary-val">{data.action_plan?.length||0}</div><div className="le-summary-sub">Ordered chronologically</div></div>
+          <div className="le-summary-stat"><div className="le-summary-label">Workspace Progress</div><div className="le-summary-val">{workspace?.summary?.completion_rate ?? pct}%</div><div className="le-summary-sub">{documentSummary.ready_documents}/{documentSummary.document_count} documents ready</div></div>
         </div>
 
         {/* 1. LICENSES */}
@@ -1023,6 +1177,208 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
           </Section>
         )}
 
+        <Section icon="W" title="Execution Workspace" subtitle={workspaceLoading ? "Loading report workspace..." : `${totalChecked}/${effectiveChecklistItems.length} tasks completed`} open>
+          {workspaceError && <div style={{ color:"var(--red)", marginBottom:"1rem" }}>{workspaceError}</div>}
+          <div style={{ marginBottom:"1rem" }}>
+            <div className="le-progress-header"><div className="le-progress-label">Overall Progress</div><div className="le-progress-pct">{workspace?.summary?.completion_rate ?? pct}%</div></div>
+            <div className="le-progress-bar-outer"><div className="le-progress-bar-inner" style={{ width:`${workspace?.summary?.completion_rate ?? pct}%` }} /></div>
+          </div>
+          {workspaceTasks.length > 0 ? (
+            <div className="le-check-grid">
+              {workspaceTasks.map((task) => {
+                const active = task.status === "completed";
+                const inProgress = task.status === "in_progress";
+                return (
+                  <div key={task.task_key} className={`le-check-item${active ? " checked" : ""}`} style={{ display:"block", cursor:"default" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", gap:12, alignItems:"flex-start" }}>
+                      <div style={{ display:"flex", gap:10, flex:1 }}>
+                        <span style={{ color:active?"#4CAF7D":inProgress?"#E09B40":"#C9A84C", flexShrink:0, fontSize:15 }}>{active ? "✓" : inProgress ? "..." : "○"}</span>
+                        <div>
+                          <div style={{ color:"var(--text-primary)", fontWeight:600 }}>{task.title}</div>
+                          <div style={{ color:"var(--text-muted)", fontSize:12, marginTop:4 }}>{task.category} | {task.timeframe || "Planned"}</div>
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                        <button className="le-btn-ghost" style={{ fontSize:11, padding:"4px 10px" }} disabled={taskSaving === task.task_key} onClick={() => handleTaskStatus(task, "in_progress")}>Start</button>
+                        <button className="le-btn-primary" style={{ fontSize:11, padding:"4px 10px" }} disabled={taskSaving === task.task_key} onClick={() => handleTaskStatus(task, active ? "pending" : "completed")}>{active ? "Reopen" : "Done"}</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ color:"var(--text-muted)" }}>Workspace tasks will appear here once the report workspace loads.</div>
+          )}
+        </Section>
+
+        <Section icon="D" title="Document Vault" subtitle={workspaceLoading ? "Preparing document checklist..." : `${documentSummary.ready_documents}/${documentSummary.document_count} documents ready or submitted`} open>
+          {Object.keys(documentsByLicense).length === 0 && !workspaceLoading && <div style={{ color:"var(--text-muted)" }}>No document checklist was generated for this report.</div>}
+          {workspace?.documents?.length > 0 && (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:10, marginBottom:"1rem" }}>
+              <div style={{ border:"1px solid rgba(76,175,125,0.22)", background:"rgba(76,175,125,0.08)", borderRadius:"var(--r-sm)", padding:"0.85rem" }}>
+                <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:6 }}>Validated</div>
+                <div style={{ fontSize:22, color:"var(--text-primary)", fontWeight:700 }}>{documentHealth.validated}</div>
+                <div style={{ fontSize:12, color:"var(--text-secondary)" }}>Passed document verification.</div>
+              </div>
+              <div style={{ border:"1px solid rgba(224,82,82,0.22)", background:"rgba(224,82,82,0.08)", borderRadius:"var(--r-sm)", padding:"0.85rem" }}>
+                <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:6 }}>Needs Review</div>
+                <div style={{ fontSize:22, color:"var(--text-primary)", fontWeight:700 }}>{documentHealth.reviewRequired}</div>
+                <div style={{ fontSize:12, color:"var(--text-secondary)" }}>Check mismatches or expiry flags.</div>
+              </div>
+              <div style={{ border:"1px solid var(--ink-border)", background:"rgba(255,255,255,0.03)", borderRadius:"var(--r-sm)", padding:"0.85rem" }}>
+                <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:6 }}>Awaiting Upload</div>
+                <div style={{ fontSize:22, color:"var(--text-primary)", fontWeight:700 }}>{documentHealth.pending}</div>
+                <div style={{ fontSize:12, color:"var(--text-secondary)" }}>Still missing from the vault.</div>
+              </div>
+            </div>
+          )}
+          {Object.entries(documentsByLicense).map(([licenseName, docs]) => (
+            <div key={licenseName} style={{ marginBottom:"1.5rem", border:"1px solid var(--ink-border)", borderRadius:"var(--r-md)", padding:"1rem", background:"rgba(255,255,255,0.02)" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:12, marginBottom:"0.85rem", alignItems:"center", flexWrap:"wrap" }}>
+                <div style={{ color:"var(--text-primary)", fontWeight:600 }}>{licenseName}</div>
+                <div style={{ color:"var(--text-muted)", fontSize:12 }}>{docs.filter((doc) => doc.status === "ready" || doc.status === "submitted").length}/{docs.length} ready</div>
+              </div>
+              <div style={{ display:"grid", gap:10 }}>
+                {docs.map((doc) => (
+                  <div
+                    key={doc.doc_key}
+                    style={{
+                      border: doc.validation?.status === "validated"
+                        ? "1px solid rgba(76,175,125,0.32)"
+                        : doc.validation?.status === "review_required"
+                          ? "1px solid rgba(224,82,82,0.32)"
+                          : "1px solid var(--ink-border)",
+                      borderRadius:"var(--r-sm)",
+                      padding:"0.85rem",
+                      background: doc.validation?.status === "validated"
+                        ? "rgba(76,175,125,0.06)"
+                        : doc.validation?.status === "review_required"
+                          ? "rgba(224,82,82,0.06)"
+                          : "rgba(9,15,22,0.5)",
+                    }}
+                  >
+                    <div style={{ display:"flex", justifyContent:"space-between", gap:12, marginBottom:8, alignItems:"center", flexWrap:"wrap" }}>
+                      <div style={{ color:"var(--text-primary)", fontSize:13 }}>{doc.document_name}</div>
+                      <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                        <div style={{ color:"var(--text-muted)", fontSize:11 }}>{doc.status.replace("_", " ")}</div>
+                        {doc.validation?.status && (
+                          <span className={`le-priority-badge priority-${doc.validation.status === "validated" ? "low" : doc.validation.status === "review_required" ? "high" : "medium"}`}>
+                            {doc.validation.status.replace("_", " ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {doc.original_filename && (
+                      <div style={{ fontSize:12, color:"var(--text-muted)", marginBottom:8 }}>
+                        Uploaded: <strong style={{ color:"var(--text-primary)" }}>{doc.original_filename}</strong>
+                        {typeof doc.file_size === "number" && <span> ({(doc.file_size / 1024 / 1024).toFixed(2)} MB)</span>}
+                        {doc.file_url && <a href={`${API_BASE}${doc.file_url}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft:8, color:"#6BA3D6", textDecoration:"none" }}>View file</a>}
+                      </div>
+                    )}
+                    {(doc.note || documentNotes[doc.doc_key]) && (
+                      <div
+                        style={{
+                          display:"inline-flex",
+                          alignItems:"center",
+                          gap:8,
+                          marginBottom:8,
+                          padding:"6px 10px",
+                          borderRadius:"999px",
+                          border:"1px solid rgba(107,163,214,0.28)",
+                          background:"rgba(107,163,214,0.10)",
+                          color:"#9fc7eb",
+                          fontSize:11,
+                          lineHeight:1.4,
+                          maxWidth:"100%",
+                        }}
+                      >
+                        <span style={{ fontSize:10, letterSpacing:"1px", textTransform:"uppercase", fontWeight:700, color:"#6BA3D6", flexShrink:0 }}>
+                          Verification Request
+                        </span>
+                        <span style={{ color:"var(--text-primary)", wordBreak:"break-word" }}>
+                          {doc.note || documentNotes[doc.doc_key]}
+                        </span>
+                      </div>
+                    )}
+                    {doc.validation?.note && (
+                      <div
+                        style={{
+                          fontSize:12,
+                          color: doc.validation?.status === "validated" ? "#86d9a5" : doc.validation?.status === "review_required" ? "#ff8d8d" : "var(--text-muted)",
+                          marginBottom:8,
+                        }}
+                      >
+                        {doc.validation.note}
+                      </div>
+                    )}
+                    {doc.validation && (
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:8, marginBottom:10 }}>
+                        {doc.validation.detected_document_type && (
+                          <div style={{ padding:"8px 10px", border:"1px solid var(--ink-border)", borderRadius:"var(--r-sm)", background:"rgba(255,255,255,0.03)" }}>
+                            <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:4 }}>Detected Type</div>
+                            <div style={{ fontSize:12, color:"var(--text-primary)" }}>{doc.validation.detected_document_type}</div>
+                          </div>
+                        )}
+                        {doc.validation.authenticity_assessment && (
+                          <div style={{ padding:"8px 10px", border:"1px solid var(--ink-border)", borderRadius:"var(--r-sm)", background:"rgba(255,255,255,0.03)" }}>
+                            <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:4 }}>Authenticity</div>
+                            <div style={{ fontSize:12, color:"var(--text-primary)" }}>{doc.validation.authenticity_assessment.replace("_", " ")}</div>
+                          </div>
+                        )}
+                        {doc.validation.validity_status && (
+                          <div style={{ padding:"8px 10px", border:"1px solid var(--ink-border)", borderRadius:"var(--r-sm)", background:"rgba(255,255,255,0.03)" }}>
+                            <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:4 }}>Validity</div>
+                            <div style={{ fontSize:12, color:"var(--text-primary)" }}>
+                              {doc.validation.validity_status.replace("_", " ")}
+                              {doc.validation.expiry_date ? ` | ${doc.validation.expiry_date}` : ""}
+                            </div>
+                          </div>
+                        )}
+                        {doc.validation.document_number && (
+                          <div style={{ padding:"8px 10px", border:"1px solid var(--ink-border)", borderRadius:"var(--r-sm)", background:"rgba(255,255,255,0.03)" }}>
+                            <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:4 }}>Identifier</div>
+                            <div style={{ fontSize:12, color:"var(--text-primary)" }}>{doc.validation.document_number}</div>
+                          </div>
+                        )}
+                        {typeof doc.validation.confidence === "number" && (
+                          <div style={{ padding:"8px 10px", border:"1px solid var(--ink-border)", borderRadius:"var(--r-sm)", background:"rgba(255,255,255,0.03)" }}>
+                            <div style={{ fontSize:10, color:"var(--text-muted)", textTransform:"uppercase", letterSpacing:"1px", marginBottom:4 }}>Confidence</div>
+                            <div style={{ fontSize:12, color:"var(--text-primary)" }}>{doc.validation.confidence}%</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <input
+                      className="le-search-input le-doc-note"
+                      style={{ marginBottom:8 }}
+                      placeholder="Ask what to verify: name, DOB, address, expiry, owner, source, or any custom check..."
+                      value={documentNotes[doc.doc_key] ?? doc.note ?? ""}
+                      onChange={(e) => setDocumentNotes((current) => ({ ...current, [doc.doc_key]: e.target.value }))}
+                    />
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                        onChange={(e) => setSelectedFiles((current) => ({ ...current, [doc.doc_key]: e.target.files?.[0] || null }))}
+                        style={{ color:"var(--text-muted)", fontSize:12, maxWidth:"260px" }}
+                      />
+                      {selectedFiles[doc.doc_key] && (
+                        <div style={{ fontSize:11, color:"var(--text-muted)" }}>
+                          Ready: <span style={{ color:"var(--text-primary)" }}>{selectedFiles[doc.doc_key].name}</span>
+                        </div>
+                      )}
+                      <button className="le-btn-primary" style={{ fontSize:11, padding:"6px 12px" }} disabled={documentSaving === doc.doc_key || !selectedFiles[doc.doc_key]} onClick={() => handleDocumentUpload(doc)}>
+                        {documentSaving === doc.doc_key ? "Verifying..." : doc.original_filename ? "Replace & Re-Verify" : "Upload Once & Verify"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Section>
+
         {/* FOLLOW UP */}
         {data.follow_up_questions?.length > 0 && (
           <div className="le-followup">
@@ -1048,7 +1404,7 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
           </div>
           <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
             <button className="le-share-btn" onClick={shareReport}>🔗 Share Link</button>
-            <button className="le-export-btn" onClick={() => exportToCSV(data)}>📥 Export CSV</button>
+            <button className="le-export-btn" onClick={() => exportToExcel(data)}>📥 Export Excel</button>
             {data.pdf_url && <a href={`${API_BASE}/api/report/${data.report_id}/pdf`} target="_blank" rel="noopener noreferrer" style={{ fontSize:12, color:"#6BA3D6", fontWeight:600, textDecoration:"none" }}>Download PDF →</a>}
             <button className="le-btn-outline" onClick={onReset} style={{ fontSize:12, padding:"7px 16px" }}>← New Analysis</button>
           </div>
@@ -1129,17 +1485,21 @@ function DashboardPage({ onOpen, onBack }) {
 function WorkspacePage({ onOpen, onBack, onCompare, onAnalyzeNew }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
   useEffect(() => {
     fetchReportsAPI().then((data) => {
       setReports(data);
       setLoading(false);
     }).catch(() => setLoading(false));
+    fetchDashboardSummaryAPI().then((data) => setSummary(data)).catch(() => {});
   }, []);
 
   const totalReports = reports.length;
   const stateCount = new Set(reports.map((r) => r.location).filter(Boolean)).size;
   const startupCount = reports.filter((r) => r.scale === "startup").length;
   const latest = reports[0];
+  const completionRate = summary?.completion_rate ?? 0;
+  const readyDocs = summary?.ready_document_count ?? 0;
 
   return (
     <div style={{ background:"var(--ink)", minHeight:"100vh" }}>
@@ -1465,13 +1825,14 @@ export default function App() {
           <button onClick={() => setError(null)} style={{ background:"none", border:"none", color:"var(--red)", cursor:"pointer", fontWeight:600, textDecoration:"underline", fontFamily:"'DM Sans',sans-serif" }}>Dismiss</button>
         </div>
       )}
-      <AnimatePresence mode="wait">
+      <AnimatePresence initial={false} mode="sync">
         <motion.div
-          key={page}
-          initial={{ opacity: 0, y: 10 }}
+          key={`${page}-${viewReportId || "root"}`}
+          className="le-page-stage"
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.35, ease: "easeInOut" }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.24, ease: "easeOut" }}
         >
           {page==="landing"   && <LandingPage onStart={() => openInputWithDraft(null)} />}
           {page==="input"     && <InputPage onAnalyze={handleAnalyze} initialValues={draftInput} />}

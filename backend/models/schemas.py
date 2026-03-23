@@ -67,3 +67,61 @@ class AnalyzeResponse(BaseModel):
     follow_up_questions:          List[str]
     pdf_url:                      Optional[str]
     report_url:                   str
+
+
+class TaskStatusUpdate(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def valid_status(cls, v):
+        value = v.strip().lower()
+        allowed = {"pending", "in_progress", "completed"}
+        if value not in allowed:
+            raise ValueError(f"Status must be one of: {', '.join(sorted(allowed))}")
+        return value
+
+
+class DocumentStatusUpdate(BaseModel):
+    doc_key: str
+    status: str = "missing"
+    note: Optional[str] = None
+    license_name: Optional[str] = None
+    document_name: Optional[str] = None
+
+    @field_validator("doc_key")
+    @classmethod
+    def valid_doc_key(cls, v):
+        value = v.strip()
+        if len(value) < 3:
+            raise ValueError("Document key is required")
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def valid_doc_status(cls, v):
+        value = v.strip().lower()
+        allowed = {"missing", "collecting", "ready", "submitted"}
+        if value not in allowed:
+            raise ValueError(f"Status must be one of: {', '.join(sorted(allowed))}")
+        return value
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, v):
+        return v.strip() if isinstance(v, str) and v.strip() else None
+
+
+class DocumentValidationResult(BaseModel):
+    status: str
+    note: str
+
+
+class UploadedDocumentMeta(BaseModel):
+    original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
+    file_size: Optional[int] = None
+    content_type: Optional[str] = None
+    uploaded_at: Optional[str] = None
+    file_url: Optional[str] = None
+    validation: Optional[DocumentValidationResult] = None

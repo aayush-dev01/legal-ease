@@ -7,6 +7,7 @@ backend/*.pyc
 backend/.env
 backend/legalease.db
 backend/generated_reports/
+backend/uploaded_documents/
 
 # Node
 frontend/node_modules/

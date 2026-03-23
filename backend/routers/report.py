@@ -1,23 +1,45 @@
 """
-LegalEase AI – /api/report Router
-Retrieve stored reports by ID and download PDFs.
+LegalEase AI - /api/report Router
+Retrieve stored reports, workspace state, and PDFs.
 """
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
 import os
-from services.storage_service import get_report, list_reports
+from datetime import datetime
+from io import BytesIO
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
+
+from models.schemas import DocumentStatusUpdate, TaskStatusUpdate
+import json
+
+from services.document_service import derive_workspace_doc_status, store_uploaded_document
+from services.excel_service import build_excel_report
+from services.storage_service import (
+    get_dashboard_summary,
+    get_report,
+    list_reports,
+    set_report_task_status,
+    upsert_report_document,
+)
+from services.workspace_service import workspace_snapshot
 
 router = APIRouter()
 GENERATED_REPORTS_DIR = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
+DOCUMENT_UPLOADS_DIR = os.getenv("DOCUMENT_UPLOADS_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploaded_documents"))
+
+
+def _get_existing_report(report_id: str) -> dict:
+    report = get_report(report_id.upper())
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
 
 
 @router.get("/report/{report_id}")
 def get_report_data(report_id: str):
     """Return full report JSON by ID."""
-    report = get_report(report_id.upper())
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+    report = _get_existing_report(report_id)
     return report["data"]
 
 
@@ -34,7 +56,107 @@ def download_pdf(report_id: str):
     )
 
 
+@router.get("/report/{report_id}/excel")
+def download_excel(report_id: str):
+    report = _get_existing_report(report_id)
+    workbook_bytes = build_excel_report(report["data"])
+    return StreamingResponse(
+        BytesIO(workbook_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="LegalEase-Report-{report_id.upper()}.xlsx"'
+        },
+    )
+
+
 @router.get("/reports")
 def get_all_reports():
     """List recent reports."""
     return list_reports(limit=50)
+
+
+@router.get("/report/{report_id}/workspace")
+def get_report_workspace(report_id: str):
+    """Return persisted tasks and document requirements for a report."""
+    normalized_report_id = report_id.upper()
+    report = _get_existing_report(normalized_report_id)
+    return workspace_snapshot(normalized_report_id, report["data"])
+
+
+@router.post("/report/{report_id}/tasks/{task_key}")
+def update_report_task(report_id: str, task_key: str, payload: TaskStatusUpdate):
+    normalized_report_id = report_id.upper()
+    report = _get_existing_report(normalized_report_id)
+    updated = set_report_task_status(normalized_report_id, task_key, payload.status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return workspace_snapshot(normalized_report_id, report["data"])
+
+
+@router.get("/report/{report_id}/documents")
+def get_report_documents(report_id: str):
+    normalized_report_id = report_id.upper()
+    report = _get_existing_report(normalized_report_id)
+    return workspace_snapshot(normalized_report_id, report["data"])["documents"]
+
+
+@router.post("/report/{report_id}/documents")
+def upsert_document(report_id: str, payload: DocumentStatusUpdate):
+    normalized_report_id = report_id.upper()
+    report = _get_existing_report(normalized_report_id)
+    upsert_report_document(
+        report_id=normalized_report_id,
+        doc_key=payload.doc_key,
+        license_name=payload.license_name or "General compliance",
+        document_name=payload.document_name or payload.doc_key,
+        status=payload.status,
+        note=payload.note,
+    )
+    return workspace_snapshot(normalized_report_id, report["data"])
+
+
+@router.post("/report/{report_id}/documents/{doc_key}/upload")
+async def upload_document(
+    report_id: str,
+    doc_key: str,
+    file: UploadFile = File(...),
+    note: str | None = Form(default=None),
+):
+    normalized_report_id = report_id.upper()
+    report = _get_existing_report(normalized_report_id)
+    workspace = workspace_snapshot(normalized_report_id, report["data"])
+    target_document = next((item for item in workspace["documents"] if item["doc_key"] == doc_key), None)
+    if not target_document:
+        raise HTTPException(status_code=404, detail="Document requirement not found")
+
+    stored = await store_uploaded_document(
+        report_id=normalized_report_id,
+        doc_key=doc_key,
+        upload=file,
+        uploads_root=DOCUMENT_UPLOADS_DIR,
+        document_name=target_document["document_name"],
+        verification_note=note,
+    )
+    upsert_report_document(
+        report_id=normalized_report_id,
+        doc_key=doc_key,
+        license_name=target_document["license_name"],
+        document_name=target_document["document_name"],
+        status=derive_workspace_doc_status(stored["validation"]["status"]),
+        note=note or target_document.get("note"),
+        original_filename=stored["original_filename"],
+        stored_filename=stored["stored_filename"],
+        stored_path=stored["stored_path"],
+        content_type=stored["content_type"],
+        file_size=stored["file_size"],
+        validation_status=stored["validation"]["status"],
+        validation_note=stored["validation"]["note"],
+        validation_payload=json.dumps(stored["validation"]),
+        uploaded_at=datetime.utcnow().isoformat(),
+    )
+    return workspace_snapshot(normalized_report_id, report["data"])
+
+
+@router.get("/dashboard/summary")
+def dashboard_summary():
+    return get_dashboard_summary()
