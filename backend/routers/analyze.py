@@ -4,8 +4,9 @@ Orchestrates: Rule Engine → Risk Engine → AI Enrichment → PDF → Storage 
 """
 
 import uuid, os, time
+import threading
 from collections import defaultdict
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from models.schemas import AnalyzeRequest, AnalyzeResponse, ScoreDetail
 from engines.rule_engine import detect_category, get_applicable_licenses, get_state_notes, calculate_compliance_complexity
@@ -67,13 +68,15 @@ def _send_report_email_background(
     business_name: str,
     pdf_path: str,
 ):
+    print(f"[analyze] Background email send started for report {report_id} to {to_email}")
     try:
-        send_report_email(
+        sent = send_report_email(
             to_email=to_email,
             report_id=report_id,
             business_name=business_name,
             pdf_path=pdf_path,
         )
+        print(f"[analyze] Background email send finished for report {report_id}: sent={sent}")
     except Exception as e:
         print(f"Email background send warning: {e}")
 
@@ -93,7 +96,7 @@ def score_label(score: int, type_: str) -> str:
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(req: AnalyzeRequest, request: Request, background_tasks: BackgroundTasks):
+async def analyze(req: AnalyzeRequest, request: Request):
     # Rate limit by IP
     client_ip = request.client.host if request.client else "unknown"
     _check_rate_limit(client_ip)
@@ -207,13 +210,12 @@ async def analyze(req: AnalyzeRequest, request: Request, background_tasks: Backg
     # ── Step 9: Send Email (non-fatal, optional) ──────────────────────────────
     if req.email and pdf_path:
         try:
-            background_tasks.add_task(
-                _send_report_email_background,
-                to_email=req.email,
-                report_id=report_id,
-                business_name=full_data["business_name"],
-                pdf_path=pdf_path,
-            )
+            print(f"[analyze] Queuing background email for report {report_id} to {req.email}")
+            threading.Thread(
+                target=_send_report_email_background,
+                args=(req.email, report_id, full_data["business_name"], pdf_path),
+                daemon=True,
+            ).start()
         except Exception as e:
             print(f"Email queue warning: {e}")  # never block the response
 

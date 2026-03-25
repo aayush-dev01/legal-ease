@@ -50,8 +50,14 @@ def send_report_email(
     Silently skips if EMAIL_ENABLED=false or SMTP not configured.
     """
     config = _get_email_config()
+    print(
+        f"[email_service] Attempting email send: enabled={config['email_enabled']} "
+        f"host={config['smtp_host']} port={config['smtp_port']} "
+        f"from={config['from_addr']} to={to_email} report={report_id}"
+    )
 
     if not config["email_enabled"]:
+        print("[email_service] EMAIL_ENABLED is false - skipping email")
         return False
     if not config["smtp_user"] or not config["smtp_pass"]:
         print("[email_service] SMTP credentials not configured - skipping email")
