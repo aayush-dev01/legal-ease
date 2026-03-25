@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 
 ENV_PATH = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(ENV_PATH, override=True)
+SMTP_TIMEOUT_SECONDS = 20
 
 
 def _get_email_config() -> dict:
@@ -153,11 +154,20 @@ def send_report_email(
     try:
         ctx = ssl.create_default_context()
         if config["smtp_port"] == 465:
-            with smtplib.SMTP_SSL(config["smtp_host"], config["smtp_port"], context=ctx) as server:
+            with smtplib.SMTP_SSL(
+                config["smtp_host"],
+                config["smtp_port"],
+                context=ctx,
+                timeout=SMTP_TIMEOUT_SECONDS,
+            ) as server:
                 server.login(config["smtp_user"], config["smtp_pass"])
                 server.sendmail(config["from_addr"], to_email, msg.as_string())
         else:
-            with smtplib.SMTP(config["smtp_host"], config["smtp_port"]) as server:
+            with smtplib.SMTP(
+                config["smtp_host"],
+                config["smtp_port"],
+                timeout=SMTP_TIMEOUT_SECONDS,
+            ) as server:
                 server.ehlo()
                 server.starttls(context=ctx)
                 server.ehlo()

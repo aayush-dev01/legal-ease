@@ -5,7 +5,7 @@ Orchestrates: Rule Engine → Risk Engine → AI Enrichment → PDF → Storage 
 
 import uuid, os, time
 from collections import defaultdict
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 from models.schemas import AnalyzeRequest, AnalyzeResponse, ScoreDetail
 from engines.rule_engine import detect_category, get_applicable_licenses, get_state_notes, calculate_compliance_complexity
@@ -61,6 +61,23 @@ def _check_rate_limit(ip: str):
     _rate_store[ip].append(now)
 
 
+def _send_report_email_background(
+    to_email: str,
+    report_id: str,
+    business_name: str,
+    pdf_path: str,
+):
+    try:
+        send_report_email(
+            to_email=to_email,
+            report_id=report_id,
+            business_name=business_name,
+            pdf_path=pdf_path,
+        )
+    except Exception as e:
+        print(f"Email background send warning: {e}")
+
+
 def score_label(score: int, type_: str) -> str:
     if type_ == "risk":
         if score <= 30: return "Low Risk"
@@ -76,7 +93,7 @@ def score_label(score: int, type_: str) -> str:
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(req: AnalyzeRequest, request: Request):
+async def analyze(req: AnalyzeRequest, request: Request, background_tasks: BackgroundTasks):
     # Rate limit by IP
     client_ip = request.client.host if request.client else "unknown"
     _check_rate_limit(client_ip)
@@ -190,14 +207,15 @@ async def analyze(req: AnalyzeRequest, request: Request):
     # ── Step 9: Send Email (non-fatal, optional) ──────────────────────────────
     if req.email and pdf_path:
         try:
-            send_report_email(
+            background_tasks.add_task(
+                _send_report_email_background,
                 to_email=req.email,
                 report_id=report_id,
                 business_name=full_data["business_name"],
                 pdf_path=pdf_path,
             )
         except Exception as e:
-            print(f"Email send warning: {e}")  # never block the response
+            print(f"Email queue warning: {e}")  # never block the response
 
     # ── Step 10: Build Response ───────────────────────────────────────────────
     return AnalyzeResponse(
