@@ -81,8 +81,14 @@ Required backend environment variables:
 GEMINI_API_KEY=your_gemini_key
 GROQ_API_KEY=your_groq_key
 BASE_URL=https://your-backend-url
-DB_PATH=legalease.db
+FRONTEND_URL=https://your-frontend-url
+CORS_ORIGINS=https://your-frontend-url
+DB_PATH=/var/data/legalease.db
+GENERATED_REPORTS_DIR=/var/data/generated_reports
+DOCUMENT_UPLOADS_DIR=/var/data/uploaded_documents
 ```
+
+If you deploy on Render with SQLite and file uploads enabled, use a persistent disk. The included `render.yaml` is configured for that.
 
 ### Frontend
 
