@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: legalease-ai-backend
+    name: legal-ease-backend-new
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
