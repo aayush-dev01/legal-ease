@@ -1,15 +1,15 @@
 services:
   - type: web
-    name: legal-ease-backend-new
+    name: legal-ease-backend
     env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    disks:
-      - name: legalease-data
-        mountPath: /var/data
-        sizeGB: 1
+    disk:
+      name: legalease-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: GEMINI_API_KEY
         sync: false
