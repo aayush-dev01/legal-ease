@@ -8,11 +8,13 @@ Configure via backend/.env - if EMAIL_ENABLED=false, silently skips.
 import os
 import smtplib
 import ssl
+import base64
 from datetime import datetime
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import httpx
 from dotenv import load_dotenv
 
 
@@ -31,11 +33,68 @@ def _get_email_config() -> dict:
         "smtp_port": int(os.getenv("SMTP_PORT", "465")),
         "smtp_user": smtp_user,
         "smtp_pass": os.getenv("SMTP_PASS", ""),
+        "resend_api_key": os.getenv("RESEND_API_KEY", "").strip(),
+        "resend_from_email": os.getenv("RESEND_FROM_EMAIL", "").strip(),
         "from_name": os.getenv("EMAIL_FROM_NAME", "LegalEase AI"),
         "from_addr": os.getenv("EMAIL_FROM_ADDR", smtp_user),
         "base_url": os.getenv("BASE_URL", "http://localhost:8000"),
         "frontend_url": os.getenv("FRONTEND_URL", "http://localhost:5173"),
     }
+
+
+def _send_via_resend(
+    config: dict,
+    to_email: str,
+    report_id: str,
+    business_name: str,
+    pdf_path: str,
+    html: str,
+    text: str,
+) -> bool:
+    if not config["resend_api_key"]:
+        return False
+
+    resend_from = config["resend_from_email"] or config["from_addr"]
+    if not resend_from:
+        print("[email_service] RESEND_FROM_EMAIL / EMAIL_FROM_ADDR not configured - skipping Resend send")
+        return False
+
+    with open(pdf_path, "rb") as f:
+        pdf_b64 = base64.b64encode(f.read()).decode("ascii")
+
+    payload = {
+        "from": f'{config["from_name"]} <{resend_from}>',
+        "to": [to_email],
+        "subject": f"Your LegalEase AI Report: {business_name} [{report_id}]",
+        "html": html,
+        "text": text,
+        "reply_to": [config["from_addr"] or resend_from],
+        "attachments": [
+            {
+                "filename": f"LegalEase-{report_id}.pdf",
+                "content": pdf_b64,
+            }
+        ],
+    }
+
+    try:
+        with httpx.Client(timeout=20.0) as client:
+            response = client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {config['resend_api_key']}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+        if response.is_success:
+            print(f"[email_service] Resend email sent to {to_email} for report {report_id}")
+            return True
+        print(f"[email_service] Resend send failed: status={response.status_code} body={response.text}")
+        return False
+    except Exception as e:
+        print(f"[email_service] Resend exception: {e}")
+        return False
 
 
 def send_report_email(
@@ -138,17 +197,25 @@ def send_report_email(
 </html>
 """
 
+    subject = f"Your LegalEase AI Report: {business_name} [{report_id}]"
+    plain_text = (
+        f"Your LegalEase AI report for {business_name} is ready.\n"
+        f"View online: {report_url}\nReport ID: {report_id}"
+    )
+
+    if config["resend_api_key"]:
+        print("[email_service] Trying HTTPS email delivery via Resend")
+        if _send_via_resend(config, to_email, report_id, business_name, pdf_path, html, plain_text):
+            return True
+        print("[email_service] Falling back to SMTP after Resend failure")
+
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Your LegalEase AI Report: {business_name} [{report_id}]"
+    msg["Subject"] = subject
     msg["From"] = f'{config["from_name"]} <{config["from_addr"]}>'
     msg["To"] = to_email
 
     msg.attach(
-        MIMEText(
-            f"Your LegalEase AI report for {business_name} is ready.\n"
-            f"View online: {report_url}\nReport ID: {report_id}",
-            "plain",
-        )
+        MIMEText(plain_text, "plain")
     )
     msg.attach(MIMEText(html, "html"))
 
