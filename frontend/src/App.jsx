@@ -99,6 +99,27 @@ function dedupeReports(reports) {
   return Array.from(seen.values());
 }
 
+function normalizeReport(report) {
+  if (!report) return null;
+  const reportId = report.report_id || report.id;
+  if (!reportId) return null;
+  return {
+    ...report,
+    report_id: reportId,
+    id: report.id || reportId,
+    business_name: report.business_name || report.idea || report.id || reportId,
+  };
+}
+
+function mergeReports(...reportSets) {
+  return dedupeReports(
+    reportSets
+      .flat()
+      .map(normalizeReport)
+      .filter(Boolean)
+  ).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+}
+
 function formatScaleLabel(scale) {
   return ({
     solo: "Solo",
@@ -1691,17 +1712,20 @@ function DashboardPage({ onOpen, onBack }) {
 }
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
-function WorkspacePage({ onOpen, onBack, onCompare, onAnalyzeNew }) {
+function WorkspacePage({ seedReports, onOpen, onBack, onCompare, onAnalyzeNew }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
   useEffect(() => {
     fetchReportsAPI().then((data) => {
-      setReports(data);
+      setReports(mergeReports(seedReports, data));
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      setReports(mergeReports(seedReports));
+      setLoading(false);
+    });
     fetchDashboardSummaryAPI().then((data) => setSummary(data)).catch(() => {});
-  }, []);
+  }, [seedReports]);
 
   const totalReports = reports.length;
   const stateCount = new Set(reports.map((r) => r.location).filter(Boolean)).size;
@@ -1743,7 +1767,7 @@ function WorkspacePage({ onOpen, onBack, onCompare, onAnalyzeNew }) {
           </div>
           <div className="le-stat-card">
             <div className="le-stat-label">Latest</div>
-            <div className="le-stat-value">{latest ? `#${latest.id}` : "—"}</div>
+            <div className="le-stat-value">{latest ? `#${latest.report_id}` : "—"}</div>
             <div className="le-stat-note">{latest ? `${latest.location} · ${formatScaleLabel(latest.scale)}` : "No reports yet."}</div>
           </div>
         </div>
@@ -1753,7 +1777,7 @@ function WorkspacePage({ onOpen, onBack, onCompare, onAnalyzeNew }) {
             <div className="le-quick-grid">
               <button className="le-quick-action" onClick={onAnalyzeNew}>Run a fresh business analysis</button>
               <button className="le-quick-action" onClick={onCompare}>Compare two stored reports</button>
-              <button className="le-quick-action" onClick={() => latest && onOpen(latest.id)} disabled={!latest}>Open the latest report</button>
+              <button className="le-quick-action" onClick={() => latest && onOpen(latest.report_id)} disabled={!latest}>Open the latest report</button>
             </div>
           </div>
           <div className="le-panel-card">
@@ -1771,10 +1795,10 @@ function WorkspacePage({ onOpen, onBack, onCompare, onAnalyzeNew }) {
           <div className="le-panel-card">
             <div className="le-panel-title">Recent Analyses</div>
             {reports.map(r => (
-              <div key={r.id} className="le-report-row" onClick={() => onOpen(r.id)}>
-                <div className="le-report-row-id">#{r.id}</div>
+              <div key={r.report_id} className="le-report-row" onClick={() => onOpen(r.report_id)}>
+                <div className="le-report-row-id">#{r.report_id}</div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div className="le-report-row-biz" style={{ marginBottom:3 }}>{r.idea?.slice(0,90)}{r.idea?.length>90?"...":""}</div>
+                  <div className="le-report-row-biz" style={{ marginBottom:3 }}>{(r.business_name || r.idea || r.report_id)?.slice(0,90)}{(r.business_name || r.idea || r.report_id)?.length>90?"...":""}</div>
                   <div className="le-report-row-meta">{r.location} · {formatScaleLabel(r.scale)} · {new Date(r.created_at).toLocaleDateString("en-IN",{ day:"numeric", month:"short", year:"numeric" })}</div>
                 </div>
                 <span style={{ fontSize:12, color:"rgba(201,168,76,0.65)", fontWeight:600, flexShrink:0 }}>View →</span>
@@ -2058,7 +2082,7 @@ export default function App() {
             />
           )}
           {page==="viewer"    && <ReportViewerPage reportId={viewReportId} onBack={goHome} onAnalyze={handleAnalyze} savedReports={savedReports} />}
-          {page==="dashboard" && <WorkspacePage onOpen={id => { setViewReportId(id); navigate("viewer", id); }} onBack={goHome} onCompare={() => navigate("compare")} onAnalyzeNew={() => openInputWithDraft(null)} />}
+          {page==="dashboard" && <WorkspacePage seedReports={savedReports} onOpen={id => { setViewReportId(id); navigate("viewer", id); }} onBack={goHome} onCompare={() => navigate("compare")} onAnalyzeNew={() => openInputWithDraft(null)} />}
           {page==="compare" && <CompareWorkspacePage seedReports={savedReports} onOpen={id => { setViewReportId(id); navigate("viewer", id); }} onBack={() => navigate("dashboard")} onAnalyzeNew={() => openInputWithDraft(null)} />}
           {page==="tools" && <FounderToolsPage onAnalyzeIdea={(draft) => openInputWithDraft(draft)} onBack={goHome} />}
         </motion.div>
