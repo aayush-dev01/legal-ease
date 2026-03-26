@@ -251,8 +251,10 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
   const [chatSending, setChatSending] = useState(false);
   const [chatError, setChatError] = useState("");
   const endRef = useRef(null);
+  const hasStartedChatRef = useRef(false);
 
   useEffect(() => {
+    if (!hasStartedChatRef.current) return;
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, chatSending]);
 
@@ -260,6 +262,7 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
     const text = (draft ?? chatInput).trim();
     if (!text || chatSending) return;
 
+    hasStartedChatRef.current = true;
     const history = messages.map(({ role, content }) => ({ role, content }));
     setMessages((current) => [...current, { role: "user", content: text }]);
     setChatInput("");
