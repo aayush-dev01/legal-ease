@@ -101,13 +101,19 @@ function dedupeReports(reports) {
 
 function normalizeReport(report) {
   if (!report) return null;
-  const reportId = report.report_id || report.id;
+  const reportId = String(report.report_id || report.id || "").toUpperCase();
   if (!reportId) return null;
+  const createdAt = report.created_at || report.saved_at || report.generated_at || report.timestamp || null;
   return {
     ...report,
     report_id: reportId,
     id: report.id || reportId,
     business_name: report.business_name || report.idea || report.id || reportId,
+    location: report.location || report.state || report.input?.location || "",
+    scale: report.scale || report.input?.scale || "",
+    mode: report.mode || report.input?.mode || "both",
+    created_at: createdAt,
+    saved_at: report.saved_at || createdAt,
   };
 }
 
@@ -118,6 +124,19 @@ function mergeReports(...reportSets) {
       .map(normalizeReport)
       .filter(Boolean)
   ).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+}
+
+function formatReportMeta(report) {
+  const parts = [];
+  if (report?.location) parts.push(report.location);
+  if (report?.scale) parts.push(formatScaleLabel(report.scale));
+  if (report?.created_at) {
+    const parsed = new Date(report.created_at);
+    if (!Number.isNaN(parsed.getTime())) {
+      parts.push(parsed.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }));
+    }
+  }
+  return parts.join(" · ");
 }
 
 function formatScaleLabel(scale) {
@@ -1657,6 +1676,7 @@ function ReportViewerPage({ reportId, onBack, onAnalyze, savedReports }) {
       setLoading(false);
       return;
     }
+    const localReport = mergeReports(savedReports).find((item) => item.report_id === String(reportId).toUpperCase()) || null;
     setLoading(true);
     setErr(null);
     setData(null);
@@ -1666,11 +1686,16 @@ function ReportViewerPage({ reportId, onBack, onAnalyze, savedReports }) {
       .then(d => { setData(d); setLoading(false); })
       .catch(e => {
         if (e.name === "AbortError") return;
+        if (localReport) {
+          setData(localReport);
+          setLoading(false);
+          return;
+        }
         setErr(e.message);
         setLoading(false);
       });
     return () => ac.abort();
-  }, [reportId]);
+  }, [reportId, savedReports]);
   if (loading) return <div className="le-report-viewer"><div className="le-report-viewer-loading"><div className="le-spinner" /><div style={{ color:"var(--text-muted)", fontSize:14 }}>Loading report #{reportId}...</div></div></div>;
   if (err || !data) return <div className="le-report-viewer"><div className="le-report-viewer-loading"><div style={{ color:"var(--red)", fontSize:16, fontWeight:600 }}>Report Not Found</div><div style={{ color:"var(--text-muted)", fontSize:13 }}>{reportId ? `Report #${reportId} could not be loaded.` : "No report ID in this link."}</div><button className="le-btn-outline" onClick={onBack} style={{ marginTop:"1rem" }}>← Back to Home</button></div></div>;
   return (
@@ -1768,7 +1793,7 @@ function WorkspacePage({ seedReports, onOpen, onBack, onCompare, onAnalyzeNew })
           <div className="le-stat-card">
             <div className="le-stat-label">Latest</div>
             <div className="le-stat-value">{latest ? `#${latest.report_id}` : "—"}</div>
-            <div className="le-stat-note">{latest ? `${latest.location} · ${formatScaleLabel(latest.scale)}` : "No reports yet."}</div>
+            <div className="le-stat-note">{latest ? (formatReportMeta(latest) || "Saved report") : "No reports yet."}</div>
           </div>
         </div>
         <div className="le-panel-grid">
@@ -1799,7 +1824,7 @@ function WorkspacePage({ seedReports, onOpen, onBack, onCompare, onAnalyzeNew })
                 <div className="le-report-row-id">#{r.report_id}</div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div className="le-report-row-biz" style={{ marginBottom:3 }}>{(r.business_name || r.idea || r.report_id)?.slice(0,90)}{(r.business_name || r.idea || r.report_id)?.length>90?"...":""}</div>
-                  <div className="le-report-row-meta">{r.location} · {formatScaleLabel(r.scale)} · {new Date(r.created_at).toLocaleDateString("en-IN",{ day:"numeric", month:"short", year:"numeric" })}</div>
+                  <div className="le-report-row-meta">{formatReportMeta(r) || "Saved report"}</div>
                 </div>
                 <span style={{ fontSize:12, color:"rgba(201,168,76,0.65)", fontWeight:600, flexShrink:0 }}>View →</span>
               </div>
@@ -1994,13 +2019,13 @@ export default function App() {
       const raw = window.localStorage.getItem("le_saved_reports");
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setSavedReports(parsed);
+      if (Array.isArray(parsed)) setSavedReports(mergeReports(parsed));
     } catch {}
   }, []);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem("le_saved_reports", JSON.stringify(savedReports.slice(0, 10)));
+      window.localStorage.setItem("le_saved_reports", JSON.stringify(mergeReports(savedReports).slice(0, 20)));
     } catch {}
   }, [savedReports]);
 
@@ -2015,8 +2040,9 @@ export default function App() {
     let data = null, errMsg = null;
     try { data = await callAnalyzeAPI(params); } catch (e) { errMsg = e.name === "AbortError" ? "Request timed out — try again." : e.message || "Analysis failed."; }
     if (data) {
-      setResult(data);
-      setSavedReports(prev => prev.find(r => r.report_id === data.report_id) ? prev : [data, ...prev].slice(0, 10));
+      const savedReport = normalizeReport({ ...data, created_at: new Date().toISOString(), saved_at: new Date().toISOString() });
+      setResult(savedReport);
+      setSavedReports(prev => mergeReports([savedReport], prev).slice(0, 20));
       window.history.pushState({}, "", `/report/${data.report_id}`);
       setPage("results");
     } else { setError(errMsg); setPage("input"); }
