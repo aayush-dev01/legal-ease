@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import CursorGlow from "./components/CursorGlow";
 import MagneticButton from "./components/MagneticButton";
 import DocumentAnimation from "./components/DocumentAnimation";
+import heroHandsImage from "./assets/hero-hands.avif";
 import { globalStyles } from "./styles/global";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
@@ -693,10 +694,19 @@ function LandingPage({ onStart }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, ease: "easeInOut" }} style={{ background:"var(--ink)" }}>
       <div className="le-hero" onMouseMove={handleHeroMouseMove} onMouseLeave={handleHeroMouseLeave}>
+        <div className="le-hero-grid" />
+        <div className="le-hero-glow" />
+        <div className="le-hero-vignette" />
+        <div className="le-hero-beam" />
+        <motion.div
+          className="le-hero-image-wrap"
+          aria-hidden="true"
+        >
+          <img className="le-hero-image" src={heroHandsImage} alt="" />
+        </motion.div>
         <motion.div style={{ transform: `translate(${mousePos.x}px, ${mousePos.y}px)`, transition: "transform 0.4s ease-out" }}>
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: "easeInOut" }}>
-            <div className="le-hero-grid" />
-            <div className="le-hero-glow" />
+            <div className="le-hero-content">
             <div className="le-hero-eyebrow"><span className="le-hero-eyebrow-dot" />AI-Powered Legal Intelligence for India</div>
             <h1>Start Smart.<br /><em>Stay Legal.</em></h1>
             <p className="le-hero-sub">From business idea to complete compliance roadmap — licenses, risks, penalties, action plan, and a branded PDF. In under 60 seconds.</p>
@@ -705,6 +715,7 @@ function LandingPage({ onStart }) {
               <MagneticButton className="le-btn-ghost" onClick={onStart}>See a Sample Report</MagneticButton>
             </div>
             <div style={{ marginTop:"2.5rem" }}><span className="le-pipeline-badge">⚙ Python Rule Engine · Gemini AI · ReportLab PDF · SQLite</span></div>
+            </div>
             <div className="le-hero-stats">
               {[["50+","License Types"],["28","States Covered"],["100+","Laws Referenced"],["PDF","Auto-Generated"],["60s","Avg. Time"]].map(([n,l], index) => (
                 <AnimatedHeroStat key={l} value={n} label={l} delay={0.42 + index * 0.08} />
