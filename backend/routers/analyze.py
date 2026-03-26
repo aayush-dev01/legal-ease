@@ -19,9 +19,15 @@ from services.email_service import send_report_email
 
 router = APIRouter()
 
+BACKEND_DIR = os.path.dirname(os.path.dirname(__file__))
 BASE_URL     = os.getenv("BASE_URL", "http://localhost:8000")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-GENERATED_REPORTS_DIR = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
+_configured_reports_dir = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
+GENERATED_REPORTS_DIR = (
+    _configured_reports_dir
+    if os.path.isabs(_configured_reports_dir)
+    else os.path.join(BACKEND_DIR, _configured_reports_dir)
+)
 
 
 def _resolve_runtime_urls(request: Request) -> tuple[str, str]:

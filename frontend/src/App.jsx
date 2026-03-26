@@ -1980,6 +1980,10 @@ export default function App() {
     } catch {}
   }, [savedReports]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [page, viewReportId]);
+
   async function handleAnalyze(params) {
     if (!params.idea.trim()) return;
     setInputData(params); setPage("loading"); setError(null);

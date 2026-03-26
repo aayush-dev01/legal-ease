@@ -31,8 +31,19 @@ from services.storage_service import (
 from services.workspace_service import workspace_snapshot
 
 router = APIRouter()
-GENERATED_REPORTS_DIR = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
-DOCUMENT_UPLOADS_DIR = os.getenv("DOCUMENT_UPLOADS_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploaded_documents"))
+BACKEND_DIR = os.path.dirname(os.path.dirname(__file__))
+_configured_reports_dir = os.getenv("GENERATED_REPORTS_DIR", "generated_reports")
+GENERATED_REPORTS_DIR = (
+    _configured_reports_dir
+    if os.path.isabs(_configured_reports_dir)
+    else os.path.join(BACKEND_DIR, _configured_reports_dir)
+)
+_configured_uploads_dir = os.getenv("DOCUMENT_UPLOADS_DIR", "uploaded_documents")
+DOCUMENT_UPLOADS_DIR = (
+    _configured_uploads_dir
+    if os.path.isabs(_configured_uploads_dir)
+    else os.path.join(BACKEND_DIR, _configured_uploads_dir)
+)
 
 
 def _get_existing_report(report_id: str) -> dict:

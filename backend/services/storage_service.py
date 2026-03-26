@@ -9,7 +9,9 @@ import os
 from datetime import datetime
 from typing import Optional
 
-DB_PATH = os.getenv("DB_PATH", "legalease.db")
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+_configured_db_path = os.getenv("DB_PATH", "legalease.db")
+DB_PATH = _configured_db_path if os.path.isabs(_configured_db_path) else os.path.join(BASE_DIR, _configured_db_path)
 
 
 def get_conn():
