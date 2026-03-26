@@ -633,6 +633,53 @@ function ComparisonView({ reports, onLoad }) {
 }
 
 // ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+function AnimatedHeroStat({ value, label, delay = 0 }) {
+  const [display, setDisplay] = useState(/^\d/.test(value) ? "0" : value);
+
+  useEffect(() => {
+    const match = /^(\d+)(.*)$/.exec(value);
+    if (!match) {
+      setDisplay(value);
+      return undefined;
+    }
+
+    const target = Number(match[1]);
+    const suffix = match[2] || "";
+    let frameId = 0;
+    let startTime = null;
+    let timerId = 0;
+
+    timerId = window.setTimeout(() => {
+      const step = (timestamp) => {
+        if (startTime == null) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / 1200, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplay(`${Math.round(target * eased)}${suffix}`);
+        if (progress < 1) frameId = window.requestAnimationFrame(step);
+      };
+      frameId = window.requestAnimationFrame(step);
+    }, delay * 1000);
+
+    return () => {
+      window.clearTimeout(timerId);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [value, delay]);
+
+  return (
+    <motion.div
+      className="le-hero-stat"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.65, delay, ease: "easeOut" }}
+      whileHover={{ y: -4 }}
+    >
+      <div className="le-hero-stat-num">{display}</div>
+      <div className="le-hero-stat-lbl">{label}</div>
+    </motion.div>
+  );
+}
+
 function LandingPage({ onStart }) {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const handleHeroMouseMove = (e) => {
@@ -659,8 +706,8 @@ function LandingPage({ onStart }) {
             </div>
             <div style={{ marginTop:"2.5rem" }}><span className="le-pipeline-badge">⚙ Python Rule Engine · Gemini AI · ReportLab PDF · SQLite</span></div>
             <div className="le-hero-stats">
-              {[["50+","License Types"],["28","States Covered"],["100+","Laws Referenced"],["PDF","Auto-Generated"],["60s","Avg. Time"]].map(([n,l]) => (
-                <div key={l} className="le-hero-stat"><div className="le-hero-stat-num">{n}</div><div className="le-hero-stat-lbl">{l}</div></div>
+              {[["50+","License Types"],["28","States Covered"],["100+","Laws Referenced"],["PDF","Auto-Generated"],["60s","Avg. Time"]].map(([n,l], index) => (
+                <AnimatedHeroStat key={l} value={n} label={l} delay={0.42 + index * 0.08} />
               ))}
             </div>
           </motion.div>
