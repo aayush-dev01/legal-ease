@@ -451,6 +451,266 @@ export const globalStyles = `
   .le-followup-q { background:rgba(255,255,255,0.035); border:1px solid var(--ink-border2); border-radius:var(--r-sm); padding:11px 16px; font-size:13px; color:var(--text-secondary); cursor:pointer; transition:all 0.18s; text-align:left; font-family:'DM Sans',sans-serif; }
   .le-followup-q:hover { background:rgba(201,168,76,0.08); border-color:rgba(201,168,76,0.28); color:var(--gold); transform:translateX(4px); }
 
+  .le-chat-card {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at top right, rgba(100,181,246,0.16), transparent 28%),
+      radial-gradient(circle at top left, rgba(255,255,255,0.07), transparent 22%),
+      linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 28px;
+    padding: 1.6rem;
+    margin-top: 2rem;
+    box-shadow: 0 28px 80px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .le-chat-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .le-chat-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(100,181,246,0.10);
+    border: 1px solid rgba(100,181,246,0.20);
+    color: #9fc7eb;
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+  }
+  .le-chat-head h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 0.45rem;
+    color: var(--text-primary);
+  }
+  .le-chat-head p {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.7;
+    max-width: 560px;
+  }
+  .le-chat-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .le-chat-meta span {
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    padding: 8px 12px;
+    border-radius: 999px;
+  }
+  .le-chat-prompts {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .le-chat-prompt {
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .le-chat-prompt:hover {
+    transform: translateY(-1px);
+    border-color: rgba(100,181,246,0.28);
+    background: rgba(100,181,246,0.08);
+  }
+  .le-chat-prompt:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .le-chat-shell {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(5,9,14,0.96), rgba(10,14,20,0.92));
+  }
+  .le-chat-orb {
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    top: -80px;
+    right: -60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(100,181,246,0.16), transparent 68%);
+    filter: blur(12px);
+    pointer-events: none;
+  }
+  .le-chat-messages {
+    position: relative;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .le-chat-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+  }
+  .le-chat-row.user {
+    flex-direction: row-reverse;
+  }
+  .le-chat-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-primary);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .le-chat-row.user .le-chat-avatar {
+    background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(220,228,236,0.92));
+    color: #091019;
+    border-color: transparent;
+  }
+  .le-chat-bubble {
+    max-width: min(720px, 84%);
+    padding: 14px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .le-chat-row.user .le-chat-bubble {
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(233,238,243,0.88));
+    color: #081018;
+    border-color: transparent;
+  }
+  .le-chat-role {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .le-chat-row.user .le-chat-role {
+    color: rgba(8,16,24,0.58);
+  }
+  .le-chat-content {
+    white-space: pre-wrap;
+    line-height: 1.7;
+    font-size: 13px;
+    color: inherit;
+  }
+  .le-chat-thinking {
+    min-width: 120px;
+  }
+  .le-chat-dots {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 16px;
+  }
+  .le-chat-dots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+    animation: le-chat-bounce 1.1s infinite ease-in-out;
+  }
+  .le-chat-dots span:nth-child(2) { animation-delay: 0.12s; }
+  .le-chat-dots span:nth-child(3) { animation-delay: 0.24s; }
+  @keyframes le-chat-bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+    40% { transform: translateY(-4px); opacity: 1; }
+  }
+  .le-chat-compose {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 1rem 1.25rem 1.25rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+  }
+  .le-chat-input {
+    width: 100%;
+    min-height: 74px;
+    resize: vertical;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 18px;
+    background: rgba(0,0,0,0.28);
+    color: var(--text-primary);
+    padding: 14px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+    outline: none;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  }
+  .le-chat-input:focus {
+    border-color: rgba(100,181,246,0.35);
+    background: rgba(0,0,0,0.42);
+    box-shadow: 0 0 0 4px rgba(100,181,246,0.08);
+  }
+  .le-chat-input::placeholder {
+    color: rgba(255,255,255,0.38);
+  }
+  .le-chat-send {
+    align-self: end;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #ffffff, #d8e3ec);
+    color: #081018;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+  }
+  .le-chat-send:hover {
+    transform: translateY(-1px);
+  }
+  .le-chat-send:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .le-chat-error {
+    margin-top: 0.85rem;
+    font-size: 12px;
+    color: #ff9f9f;
+  }
+  .le-chat-footnote {
+    margin-top: 0.8rem;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+  }
+
   .le-pipeline-badge { display:inline-flex; align-items:center; gap:7px; background:rgba(76,175,125,0.12); border:1px solid rgba(76,175,125,0.25); border-radius:100px; padding:6px 14px; font-size:10.5px; color:var(--green); font-weight:600; }
 
   /* MISC */
@@ -621,6 +881,17 @@ export const globalStyles = `
     .le-hero-stat { padding:0 1.5rem; }
     .le-section-dark,.le-section-mid { padding:4rem 1.5rem; }
     .le-steps-row { grid-template-columns:1fr 1fr; }
+    .le-chat-head,
+    .le-chat-compose {
+      grid-template-columns: 1fr;
+      display: grid;
+    }
+    .le-chat-meta {
+      justify-content: flex-start;
+    }
+    .le-chat-bubble {
+      max-width: 100%;
+    }
   }
   @media (max-width:500px) {
     .le-kpi-grid,.le-summary-grid { grid-template-columns:1fr; }

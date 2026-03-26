@@ -76,6 +76,19 @@ async function uploadDocumentAPI(reportId, docKey, file, note) {
   return response.json();
 }
 
+async function sendReportChatMessageAPI(reportId, message, history) {
+  const response = await fetch(`${API_BASE}/api/report/${encodeURIComponent(reportId)}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, history }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to send chat message");
+  }
+  return response.json();
+}
+
 function dedupeReports(reports) {
   const seen = new Map();
   (reports || []).forEach((report) => {
@@ -166,6 +179,120 @@ function Toast({ message, show }) {
 
 function ResultsModal({ children }) {
   return createPortal(children, document.body);
+}
+
+function ReportChat({ reportId, businessName, location, category, prompts, showToast }) {
+  const starterPrompts = (prompts?.length ? prompts : [
+    "What should I do in the next 30 days?",
+    "Which license is most urgent and why?",
+    "What documents should I gather first?",
+  ]).slice(0, 4);
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: `Ask anything about ${businessName || "this report"}. I can explain licenses, documents, risks, timelines, and next steps for ${location || "your market"} in the ${category || "business"} category.`,
+    },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const endRef = useRef(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, chatSending]);
+
+  const handleSend = async (draft) => {
+    const text = (draft ?? chatInput).trim();
+    if (!text || chatSending) return;
+
+    const history = messages.map(({ role, content }) => ({ role, content }));
+    setMessages((current) => [...current, { role: "user", content: text }]);
+    setChatInput("");
+    setChatError("");
+    setChatSending(true);
+
+    try {
+      const payload = await sendReportChatMessageAPI(reportId, text, history);
+      setMessages((current) => [...current, { role: "assistant", content: payload.answer }]);
+    } catch (error) {
+      const msg = error.message || "Chat failed";
+      setChatError(msg);
+      showToast?.(msg);
+    } finally {
+      setChatSending(false);
+    }
+  };
+
+  return (
+    <div className="le-chat-card">
+      <div className="le-chat-head">
+        <div>
+          <div className="le-chat-eyebrow">Report Copilot</div>
+          <h3>Dig Deeper</h3>
+          <p>Have a real conversation about this report instead of launching another full analysis run.</p>
+        </div>
+        <div className="le-chat-meta">
+          <span>{location || "India"}</span>
+          <span>{category || "Compliance"}</span>
+        </div>
+      </div>
+
+      <div className="le-chat-prompts">
+        {starterPrompts.map((prompt) => (
+          <button key={prompt} className="le-chat-prompt" onClick={() => handleSend(prompt)} disabled={chatSending}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      <div className="le-chat-shell">
+        <div className="le-chat-orb" />
+        <div className="le-chat-messages">
+          {messages.map((message, index) => (
+            <div key={`${message.role}-${index}`} className={`le-chat-row ${message.role === "user" ? "user" : "assistant"}`}>
+              <div className="le-chat-avatar">{message.role === "user" ? "You" : "AI"}</div>
+              <div className="le-chat-bubble">
+                <div className="le-chat-role">{message.role === "user" ? "Founder" : "LegalEase Counsel"}</div>
+                <div className="le-chat-content">{message.content}</div>
+              </div>
+            </div>
+          ))}
+          {chatSending && (
+            <div className="le-chat-row assistant">
+              <div className="le-chat-avatar">AI</div>
+              <div className="le-chat-bubble le-chat-thinking">
+                <div className="le-chat-role">LegalEase Counsel</div>
+                <div className="le-chat-dots"><span /><span /><span /></div>
+              </div>
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+
+        <div className="le-chat-compose">
+          <textarea
+            className="le-chat-input"
+            placeholder="Ask about licenses, penalties, document prep, timeline, or your safest next move..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+          <button className="le-chat-send" onClick={() => handleSend()} disabled={chatSending || chatInput.trim().length < 2}>
+            {chatSending ? "Thinking..." : "Send"}
+          </button>
+        </div>
+      </div>
+
+      {chatError && <div className="le-chat-error">{chatError}</div>}
+      <div className="le-chat-footnote">Answers stay grounded in this report and help translate it into practical next steps.</div>
+    </div>
+  );
 }
 
 // ─── FEATURE: SMART SEARCH ───────────────────────────────────────────────────
@@ -737,7 +864,7 @@ function LoadingPage() {
 }
 
 // ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
-function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, sharedView }) {
+function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
   const f = data.feasibility || {}, r = data.risk || {}, c = data.compliance_complexity || {};
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, setModal] = useState(null); // "timeline"|"calculator"|"assistant"|"compare"|"progress"
@@ -1380,7 +1507,7 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
         </Section>
 
         {/* FOLLOW UP */}
-        {data.follow_up_questions?.length > 0 && (
+        {false && (
           <div className="le-followup">
             <h3>Dig Deeper</h3>
             <p>Click any question to run a new analysis with it pre-filled — tailored to your business context.</p>
@@ -1394,6 +1521,15 @@ function ResultsPage({ data, input, onReset, onAskQuestion, savedReports, shared
             <div style={{ marginTop:"1rem", fontSize:11, color:"rgba(255,255,255,0.22)" }}>Each question runs the full analysis pipeline with your location, scale, and mode preserved.</div>
           </div>
         )}
+
+        <ReportChat
+          reportId={data.report_id}
+          businessName={data.business_name}
+          location={input?.location || data.location}
+          category={data.category}
+          prompts={data.follow_up_questions}
+          showToast={showToast}
+        />
 
         {/* Footer */}
         <div style={{ marginTop:"2rem", background:"rgba(201,168,76,0.05)", border:"1px solid rgba(201,168,76,0.14)", borderRadius:"var(--r-lg)", padding:"1.5rem 2rem", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>

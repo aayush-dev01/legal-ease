@@ -10,9 +10,15 @@ from io import BytesIO
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from models.schemas import DocumentStatusUpdate, TaskStatusUpdate
+from models.schemas import (
+    DocumentStatusUpdate,
+    ReportChatRequest,
+    ReportChatResponse,
+    TaskStatusUpdate,
+)
 import json
 
+from services.chat_service import chat_about_report
 from services.document_service import derive_workspace_doc_status, store_uploaded_document
 from services.excel_service import build_excel_report
 from services.storage_service import (
@@ -41,6 +47,17 @@ def get_report_data(report_id: str):
     """Return full report JSON by ID."""
     report = _get_existing_report(report_id)
     return report["data"]
+
+
+@router.post("/report/{report_id}/chat", response_model=ReportChatResponse)
+async def chat_with_report(report_id: str, payload: ReportChatRequest):
+    report = _get_existing_report(report_id.upper())
+    answer = await chat_about_report(
+        report=report,
+        message=payload.message,
+        history=[item.model_dump() for item in payload.history],
+    )
+    return ReportChatResponse(answer=answer)
 
 
 @router.get("/report/{report_id}/pdf")

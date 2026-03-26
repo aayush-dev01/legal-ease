@@ -2,7 +2,7 @@
 LegalEase AI – Pydantic Schemas
 """
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Any
 
 
@@ -125,3 +125,46 @@ class UploadedDocumentMeta(BaseModel):
     uploaded_at: Optional[str] = None
     file_url: Optional[str] = None
     validation: Optional[DocumentValidationResult] = None
+
+
+class ReportChatMessage(BaseModel):
+    role: str
+    content: str
+
+    @field_validator("role")
+    @classmethod
+    def valid_role(cls, v):
+        value = v.strip().lower()
+        allowed = {"user", "assistant"}
+        if value not in allowed:
+            raise ValueError(f"Role must be one of: {', '.join(sorted(allowed))}")
+        return value
+
+    @field_validator("content")
+    @classmethod
+    def valid_content(cls, v):
+        value = v.strip()
+        if len(value) < 1:
+            raise ValueError("Message content is required")
+        if len(value) > 4000:
+            raise ValueError("Message content must be under 4000 characters")
+        return value
+
+
+class ReportChatRequest(BaseModel):
+    message: str
+    history: List[ReportChatMessage] = Field(default_factory=list)
+
+    @field_validator("message")
+    @classmethod
+    def valid_message(cls, v):
+        value = v.strip()
+        if len(value) < 2:
+            raise ValueError("Message must be at least 2 characters")
+        if len(value) > 4000:
+            raise ValueError("Message must be under 4000 characters")
+        return value
+
+
+class ReportChatResponse(BaseModel):
+    answer: str

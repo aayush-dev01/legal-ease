@@ -1,6 +1,6 @@
 """
 LegalEase AI - Document Service
-Handles upload storage and Groq-powered validation for report documents.
+Handles upload storage and AI-powered validation for report documents.
 """
 
 from __future__ import annotations
@@ -178,7 +178,7 @@ async def analyze_document_with_ai(
 ) -> dict[str, Any]:
     groq_api_key = get_groq_api_key()
     if not groq_api_key:
-        raise HTTPException(status_code=500, detail="Groq API key is not configured for document validation.")
+        raise HTTPException(status_code=500, detail="AI validation is not configured for document checks.")
 
     data_urls = _file_to_data_urls(file_bytes, content_type)
 
@@ -247,13 +247,13 @@ async def analyze_document_with_ai(
         )
 
     if response.status_code != 200:
-        raise HTTPException(status_code=502, detail="Groq document validation failed.")
+        raise HTTPException(status_code=502, detail="AI document validation failed.")
 
     try:
         raw = response.json()["choices"][0]["message"]["content"]
         parsed = raw if isinstance(raw, dict) else _extract_json(raw)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Groq document validation response was invalid: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"AI document validation response was invalid: {exc}") from exc
 
     parsed["confidence"] = _normalize_confidence_value(parsed.get("confidence"))
     parsed["status"] = map_validation_to_status(parsed)
