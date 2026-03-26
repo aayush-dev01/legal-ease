@@ -181,12 +181,25 @@ function ResultsModal({ children }) {
   return createPortal(children, document.body);
 }
 
-function ReportChat({ reportId, businessName, location, category, prompts, showToast }) {
-  const starterPrompts = (prompts?.length ? prompts : [
-    "What should I do in the next 30 days?",
-    "Which license is most urgent and why?",
-    "What documents should I gather first?",
-  ]).slice(0, 4);
+function buildReportChatPrompts({ category, licenses, risks, actionPlan, location }) {
+  const prompts = [];
+  const topLicense = licenses?.[0]?.name;
+  const criticalLicense = licenses?.find((item) => (item.priority || "").toLowerCase() === "critical")?.name;
+  const topRisk = risks?.[0]?.title;
+  const firstAction = actionPlan?.[0]?.title;
+
+  if (criticalLicense) prompts.push(`Why is ${criticalLicense} important for this business?`);
+  if (topLicense && topLicense !== criticalLicense) prompts.push(`What documents do I need for ${topLicense}?`);
+  if (topRisk) prompts.push(`How serious is the risk around "${topRisk}"?`);
+  if (firstAction) prompts.push(`How should I start with "${firstAction}"?`);
+  if (category) prompts.push(`What compliance mistakes are common for ${category} businesses in ${location || "this location"}?`);
+  prompts.push("What should I do in the next 30 days?");
+
+  return Array.from(new Set(prompts.filter(Boolean))).slice(0, 4);
+}
+
+function ReportChat({ reportId, businessName, location, category, licenses, risks, actionPlan, showToast }) {
+  const starterPrompts = buildReportChatPrompts({ category, licenses, risks, actionPlan, location });
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -1527,7 +1540,9 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
           businessName={data.business_name}
           location={input?.location || data.location}
           category={data.category}
-          prompts={data.follow_up_questions}
+          licenses={data.licenses}
+          risks={data.risks}
+          actionPlan={data.action_plan}
           showToast={showToast}
         />
 
