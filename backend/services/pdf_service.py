@@ -404,7 +404,6 @@ def breakdown_chart(breakdown: List[dict]) -> Drawing:
 def build_cover(story: list, data: dict, styles):
     business_name = clean_text(data.get("business_name", "Business Legal Analysis"))
     subtitle = clean_text(data.get("category", "")) or "India Market Entry and Compliance Outlook"
-    date_str = datetime.now().strftime("%d %B %Y")
     story.append(Spacer(1, 50 * mm))
     story.append(Paragraph("LEGALEASE AI", styles["cover_brand"]))
     story.append(Spacer(1, 6))
@@ -418,7 +417,7 @@ def build_cover(story: list, data: dict, styles):
     story.append(Spacer(1, 10))
     story.append(divider(width=72 * mm, color=GOLD_SOFT, thickness=0.8))
     story.append(Spacer(1, 10))
-    story.append(Paragraph(f"Prepared for India launch planning  |  {date_str}", styles["cover_meta"]))
+    story.append(Paragraph("Prepared for India launch planning", styles["cover_meta"]))
     story.append(Spacer(1, 7 * mm))
     story.append(Paragraph("Prepared by LegalEase AI as a structured legal and compliance briefing for founders, operators, and advisors.", ParagraphStyle("cover_note", fontName="Helvetica", fontSize=9.5, leading=14, textColor=TEXT_MUTED, alignment=TA_CENTER)))
     story.append(PageBreak())
@@ -573,7 +572,7 @@ def build_footer_block(story: list, data: dict, styles):
     story.append(Spacer(1, 4))
     story.append(Paragraph("LEGALEASE AI", styles["footer_brand"]))
     report_id = clean_text(data.get("report_id", ""))
-    story.append(Paragraph(f"Report ID: {report_id}  |  Generated {datetime.now().strftime('%d %B %Y')}", styles["footer"]))
+    story.append(Paragraph(f"Report ID: {report_id}", styles["footer"]))
     if data.get("report_url"):
         story.append(Paragraph(clean_text(data["report_url"]), styles["footer"]))
 

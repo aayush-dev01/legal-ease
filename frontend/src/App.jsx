@@ -130,12 +130,6 @@ function formatReportMeta(report) {
   const parts = [];
   if (report?.location) parts.push(report.location);
   if (report?.scale) parts.push(formatScaleLabel(report.scale));
-  if (report?.created_at) {
-    const parsed = new Date(report.created_at);
-    if (!Number.isNaN(parsed.getTime())) {
-      parts.push(parsed.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }));
-    }
-  }
   return parts.join(" · ");
 }
 
@@ -1190,7 +1184,7 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
       <div className="le-results">
         {/* Header */}
         <div className="le-results-header">
-          <div className="le-results-meta">Report #{data.report_id} · {new Date().toLocaleDateString("en-IN",{ day:"numeric", month:"long", year:"numeric" })} · Python + Gemini AI · India</div>
+          <div className="le-results-meta">Report #{data.report_id} · Python + Gemini AI · India</div>
           <div className="le-results-title">{data.business_name}</div>
           <div className="le-results-sub">{data.summary}</div>
           {data.key_insight && (
@@ -1718,7 +1712,7 @@ function DashboardPage({ onOpen, onBack }) {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"2.5rem", flexWrap:"wrap", gap:12 }}>
           <div>
             <div style={{ fontSize:10, letterSpacing:"2.5px", textTransform:"uppercase", color:"#C9A84C", fontWeight:600, marginBottom:8 }}>Report History</div>
-            <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"1.9rem", color:"var(--text-primary)", fontWeight:600, letterSpacing:"-0.3px" }}>Past Analyses</h2>
+            <h2 style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:"1.9rem", color:"var(--text-primary)", fontWeight:600, letterSpacing:"-0.3px" }}>Saved Analyses</h2>
           </div>
           <button className="le-btn-outline" onClick={onBack} style={{ fontSize:13 }}>← Back</button>
         </div>
@@ -1729,7 +1723,7 @@ function DashboardPage({ onOpen, onBack }) {
             <div className="le-report-row-id">#{r.id}</div>
             <div style={{ flex:1, minWidth:0 }}>
               <div className="le-report-row-biz" style={{ marginBottom:3 }}>{r.idea?.slice(0,60)}{r.idea?.length>60?"...":""}</div>
-              <div className="le-report-row-meta">{r.location} · {r.scale} · {new Date(r.created_at).toLocaleDateString("en-IN",{ day:"numeric", month:"short", year:"numeric" })}</div>
+              <div className="le-report-row-meta">{formatReportMeta(r) || "Saved report"}</div>
             </div>
             <span style={{ fontSize:12, color:"rgba(201,168,76,0.65)", fontWeight:600, flexShrink:0 }}>View →</span>
           </div>

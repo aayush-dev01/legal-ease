@@ -127,8 +127,6 @@ def send_report_email(
 
     report_url = f'{config["frontend_url"]}/report/{report_id}'
     pdf_url = f'{config["base_url"]}/api/report/{report_id}/pdf'
-    generated = datetime.now().strftime("%d %B %Y")
-
     html = f"""
 <!DOCTYPE html>
 <html>
@@ -150,7 +148,7 @@ def send_report_email(
         </td></tr>
         <tr><td style="padding:0 32px 24px;">
           <h1 style="color:#FFFFFF;font-size:24px;font-weight:700;margin:0 0 8px;">Your Legal Report is Ready</h1>
-          <p style="color:#7A7570;font-size:14px;margin:0;">Generated on {generated} · Report ID: <strong style="color:#C9A84C;">{report_id}</strong></p>
+          <p style="color:#7A7570;font-size:14px;margin:0;">Report ID: <strong style="color:#C9A84C;">{report_id}</strong></p>
         </td></tr>
         <tr><td style="padding:0 32px 24px;">
           <div style="background:#252320;border:1px solid #333028;border-left:4px solid #C9A84C;border-radius:8px;padding:16px 20px;">
