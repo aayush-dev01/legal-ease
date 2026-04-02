@@ -233,7 +233,7 @@ function buildReportChatPrompts({ category, licenses, risks, actionPlan, locatio
   return Array.from(new Set(prompts.filter(Boolean))).slice(0, 4);
 }
 
-function ReportChat({ reportId, businessName, location, category, licenses, risks, actionPlan, showToast }) {
+function ReportChat({ reportId, businessName, location, category, licenses, risks, actionPlan, showToast, disabledReason = "" }) {
   const starterPrompts = buildReportChatPrompts({ category, licenses, risks, actionPlan, location });
   const [messages, setMessages] = useState([
     {
@@ -255,6 +255,11 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
   const handleSend = async (draft) => {
     const text = (draft ?? chatInput).trim();
     if (!text || chatSending) return;
+    if (disabledReason) {
+      setChatError(disabledReason);
+      showToast?.(disabledReason);
+      return;
+    }
 
     hasStartedChatRef.current = true;
     const history = messages.map(({ role, content }) => ({ role, content }));
@@ -291,7 +296,7 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
 
       <div className="le-chat-prompts">
         {starterPrompts.map((prompt) => (
-          <button key={prompt} className="le-chat-prompt" onClick={() => handleSend(prompt)} disabled={chatSending}>
+          <button key={prompt} className="le-chat-prompt" onClick={() => handleSend(prompt)} disabled={chatSending || !!disabledReason}>
             {prompt}
           </button>
         ))}
@@ -326,6 +331,7 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
             className="le-chat-input"
             placeholder="Ask about licenses, penalties, document prep, timeline, or your safest next move..."
             value={chatInput}
+            disabled={!!disabledReason}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -334,13 +340,13 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
               }
             }}
           />
-          <button className="le-chat-send" onClick={() => handleSend()} disabled={chatSending || chatInput.trim().length < 2}>
+          <button className="le-chat-send" onClick={() => handleSend()} disabled={!!disabledReason || chatSending || chatInput.trim().length < 2}>
             {chatSending ? "Thinking..." : "Send"}
           </button>
         </div>
       </div>
 
-      {chatError && <div className="le-chat-error">{chatError}</div>}
+      {(chatError || disabledReason) && <div className="le-chat-error">{chatError || disabledReason}</div>}
       <div className="le-chat-footnote">Answers stay grounded in this report and help translate it into practical next steps.</div>
     </div>
   );
@@ -972,7 +978,7 @@ function LoadingPage() {
 }
 
 // ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
-function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
+function ResultsPage({ data, input, onReset, savedReports, sharedView, backendAvailable = true }) {
   const f = data.feasibility || {}, r = data.risk || {}, c = data.compliance_complexity || {};
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, setModal] = useState(null); // "timeline"|"calculator"|"assistant"|"compare"|"progress"
@@ -1013,6 +1019,13 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
   }, [modal]);
 
   useEffect(() => {
+    if (!backendAvailable) {
+      setWorkspace(null);
+      setDocumentNotes({});
+      setWorkspaceLoading(false);
+      setWorkspaceError("Workspace is unavailable for this saved report because it is no longer present on the server.");
+      return undefined;
+    }
     let cancelled = false;
     setWorkspaceLoading(true);
     setWorkspaceError("");
@@ -1030,7 +1043,7 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
         setWorkspaceError("Workspace data could not be loaded.");
       });
     return () => { cancelled = true; };
-  }, [data.report_id]);
+  }, [backendAvailable, data.report_id]);
 
   const shareReport = () => {
     const url = `${window.location.origin}/report/${data.report_id}`;
@@ -1639,6 +1652,7 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
           risks={data.risks}
           actionPlan={data.action_plan}
           showToast={showToast}
+          disabledReason={backendAvailable ? "" : "Report Copilot is unavailable for this saved report because the backend no longer has the source report."}
         />
 
         {/* Footer */}
@@ -1665,11 +1679,12 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView }) {
 
 // ─── REPORT VIEWER PAGE ───────────────────────────────────────────────────────
 function ReportViewerPage({ reportId, onBack, onAnalyze, savedReports }) {
-  const [data, setData] = useState(null); const [loading, setLoading] = useState(true); const [err, setErr] = useState(null);
+  const [data, setData] = useState(null); const [loading, setLoading] = useState(true); const [err, setErr] = useState(null); const [backendAvailable, setBackendAvailable] = useState(true);
   useEffect(() => {
     if (!reportId) {
       setData(null);
       setErr("Invalid report link");
+      setBackendAvailable(false);
       setLoading(false);
       return;
     }
@@ -1677,18 +1692,21 @@ function ReportViewerPage({ reportId, onBack, onAnalyze, savedReports }) {
     setLoading(true);
     setErr(null);
     setData(null);
+    setBackendAvailable(true);
     const ac = new AbortController();
     fetch(`${API_BASE}/api/report/${encodeURIComponent(reportId)}`, { signal: ac.signal })
       .then(r => { if (!r.ok) throw new Error("Report not found"); return r.json(); })
-      .then(d => { setData(d); setLoading(false); })
+      .then(d => { setData(d); setBackendAvailable(true); setLoading(false); })
       .catch(e => {
         if (e.name === "AbortError") return;
         if (localReport) {
           setData(localReport);
+          setBackendAvailable(false);
           setLoading(false);
           return;
         }
         setErr(e.message);
+        setBackendAvailable(false);
         setLoading(false);
       });
     return () => ac.abort();
@@ -1697,7 +1715,7 @@ function ReportViewerPage({ reportId, onBack, onAnalyze, savedReports }) {
   if (err || !data) return <div className="le-report-viewer"><div className="le-report-viewer-loading"><div style={{ color:"var(--red)", fontSize:16, fontWeight:600 }}>Report Not Found</div><div style={{ color:"var(--text-muted)", fontSize:13 }}>{reportId ? `Report #${reportId} could not be loaded.` : "No report ID in this link."}</div><button className="le-btn-outline" onClick={onBack} style={{ marginTop:"1rem" }}>← Back to Home</button></div></div>;
   return (
     <div className="le-report-viewer">
-      <ResultsPage data={data} sharedView input={{ location:data.location, scale:data.scale, mode:data.mode }} onReset={onBack} onAskQuestion={onAnalyze ? (q,inp) => onAnalyze({ idea:q, location:inp.location, scale:inp.scale, mode:inp.mode }) : onBack} savedReports={savedReports} />
+      <ResultsPage data={data} sharedView backendAvailable={backendAvailable} input={{ location:data.location, scale:data.scale, mode:data.mode }} onReset={onBack} onAskQuestion={onAnalyze ? (q,inp) => onAnalyze({ idea:q, location:inp.location, scale:inp.scale, mode:inp.mode }) : onBack} savedReports={savedReports} />
     </div>
   );
 }
