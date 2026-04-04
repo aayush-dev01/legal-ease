@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export default function CursorGlow() {
+export default function PointerGlow() {
   const [pos, setPos] = useState({ x: -400, y: -400 });
   const [visible, setVisible] = useState(false);
 

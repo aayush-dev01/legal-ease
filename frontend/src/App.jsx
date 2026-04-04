@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
-import CursorGlow from "./components/CursorGlow";
+import PointerGlow from "./components/PointerGlow";
 import MagneticButton from "./components/MagneticButton";
 import DocumentAnimation from "./components/DocumentAnimation";
 import heroHandsImage from "./assets/hero-hands.avif";
@@ -284,7 +284,7 @@ function ReportChat({ reportId, businessName, location, category, licenses, risk
     <div className="le-chat-card">
       <div className="le-chat-head">
         <div>
-          <div className="le-chat-eyebrow">Report Copilot</div>
+          <div className="le-chat-eyebrow">Report assistant</div>
           <h3>Dig Deeper</h3>
           <p>Have a real conversation about this report instead of launching another full analysis run.</p>
         </div>
@@ -1652,7 +1652,7 @@ function ResultsPage({ data, input, onReset, savedReports, sharedView, backendAv
           risks={data.risks}
           actionPlan={data.action_plan}
           showToast={showToast}
-          disabledReason={backendAvailable ? "" : "Report Copilot is unavailable for this saved report because the backend no longer has the source report."}
+          disabledReason={backendAvailable ? "" : "The report assistant is unavailable for this saved report because the backend no longer has the source report."}
         />
 
         {/* Footer */}
@@ -2075,7 +2075,7 @@ export default function App() {
   return (
     <div className="le-root">
       <style>{css}</style>
-      <CursorGlow />
+      <PointerGlow />
       <motion.nav
         className="le-nav"
         initial={{ opacity: 0, y: -20 }}

@@ -118,6 +118,4 @@ It is **guidance**, not a law firm. It helps you see **what may matter**, **wher
 
 ## Disclaimer
 
-LegalEase AI is **informational only**. It is **not** legal, tax, or compliance advice and **not** a substitute for a qualified lawyer, chartered accountant, or professional. Always verify obligations against current law, regulators, and your facts.
-
-<p align="center"><sub>Made with 🤍</sub></p>
+LegalEase AI is **informational only**. It is **not** legal, tax, or compliance advice and **not** a substitute for a qualified lawyer, chartered accountant, or compliance professional. Always verify obligations against current law, regulators, and your facts.
