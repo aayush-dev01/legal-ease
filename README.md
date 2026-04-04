@@ -1,31 +1,33 @@
 # LegalEase AI
 
-![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)
-![FastAPI](https://img.shields.io/badge/Backend-FastAPI-0F766E?style=for-the-badge&logo=fastapi&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.11+-1E3A8A?style=for-the-badge&logo=python&logoColor=white)
-![SQLite](https://img.shields.io/badge/Database-SQLite-1D4ED8?style=for-the-badge&logo=sqlite&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Active%20Build-C28A2E?style=for-the-badge)
+<p align="center"><sub>INDIA · LEGAL INTELLIGENCE</sub></p>
 
-**AI-powered legal intelligence for Indian founders** — turn a business idea into a structured compliance picture: licenses, risks, costs, action steps, verified documents, and exports you can share.
+<p align="center"><strong>Start Smart.</strong> <em>Stay Legal.</em></p>
+
+<p align="center"><em>AI-powered legal intelligence for India — from business idea to a compliance roadmap: licenses, risks, penalties, action plan, and founder-ready PDFs. Built to feel fast, clear, and calm.</em></p>
+
+<p align="center"><sub>React · Vite · FastAPI · Python Rule Engine · Gemini AI · ReportLab PDF · SQLite</sub></p>
 
 ---
 
-## Table of contents
+## Contents
 
-1. [Live app](#live-app)
+1. [Experience](#experience)
 2. [Overview](#overview)
 3. [Who it’s for](#who-its-for)
 4. [At a glance](#at-a-glance)
-5. [Core features](#core-features)
+5. [Inside the product](#inside-the-product)
 6. [Screenshots](#screenshots)
 7. [Technology](#technology)
 8. [Disclaimer](#disclaimer)
 
 ---
 
-## Live app
+## Experience
 
-**[Visit LegalEase AI — India](https://legal-ease-founders.vercel.app/)** on Vercel to use the product in your browser: run an analysis, browse the legal dashboard and workspace, manage documents, and try exports — no local setup.
+**[Open LegalEase — India](https://legal-ease-founders.vercel.app/)**
+
+The live app runs on Vercel: analyze a business, read the legal dashboard, use the workspace and document vault, and export PDF or Excel — nothing to install.
 
 `https://legal-ease-founders.vercel.app/`
 
@@ -33,96 +35,89 @@
 
 ## Overview
 
-LegalEase AI is a founder-focused workspace for **India-specific compliance**. You describe your startup or business idea; the platform helps you understand **what licenses and obligations may matter**, **where risks sit**, and **what to do next** — without replacing a qualified professional.
+LegalEase is the same **editorial, founder-first** experience as the site: a dark, focused workspace where you describe what you’re building, then see **feasibility**, **risk**, **complexity**, and **licenses** framed the way the product presents them — structured, legible, and built for decisions.
 
-It brings together:
-
-- **Structured analysis** from idea to compliance-style report  
-- **A clear legal dashboard** (feasibility, risk, complexity, licenses)  
-- **A document vault** with uploads and verification-style notes  
-- **Workspace tools** for tasks, comparisons, and follow-through  
-- **Exports** (PDF and premium Excel) for stakeholders and your own records  
+It is **guidance**, not a law firm. It helps you see **what may matter**, **where to look**, and **what to do next**, with **past reports**, **comparison**, and **exports** when you need to share or file things away.
 
 ---
 
 ## Who it’s for
 
-- **Founders and early teams** building in India who need a sane starting map for compliance.  
-- **Operators** who want past analyses in one place, side-by-side comparison, and a task-oriented workspace.  
-- **Anyone** who values **document checklists**, **verification notes**, and **downloadable reports** alongside the in-app experience.
+| Who | Why LegalEase |
+|:----|:--------------|
+| **Founders & small teams** | A first, serious map of India compliance before legal spend scales |
+| **Operators** | One place for history, comparison, and execution |
+| **Builders who live in details** | Vault notes, checklists, and downloads beside the in-app flow |
 
 ---
 
 ## At a glance
 
 | Area | What you get |
-|------|----------------|
-| **Business analysis** | Idea → structured compliance-oriented report |
-| **Legal dashboard** | Feasibility, risk, complexity, and required licenses surfaced clearly |
-| **Document vault** | Uploads, compliance documents, and custom verification notes |
-| **Workspace** | Tasks, action steps, comparisons, operational follow-through |
-| **Reports** | Founder-ready **PDF** and **premium Excel** exports |
+|:-----|:-------------|
+| **Analyze** | Idea → structured compliance-style report |
+| **Dashboard** | Feasibility, risk, complexity, licenses — readable at a glance |
+| **Vault** | Uploads, documents, verification notes |
+| **Workspace** | Tasks, steps, comparisons, follow-through |
+| **Exports** | **PDF** and **premium Excel** |
 
 ---
 
-## Core features
+## Inside the product
 
-### Business analysis and dashboard
+<p align="center"><sub>ANALYSIS & DASHBOARD</sub></p>
 
-- **Business analysis flow** that turns your idea into a structured compliance report.  
-- **Legal dashboard** that highlights feasibility, risk level, complexity, and **licenses** in one view.  
-- **Business analysis dashboard** as the hub for understanding your case at a glance.
+- Describe the business; get a **structured report** aligned with India-facing logic  
+- **Legal dashboard**: feasibility, risk, complexity, **licenses** in one view  
+- **Hub** layout that matches how the app orients you on a case  
 
-### Reports, history, and comparison
+<p align="center"><sub>REPORTS & HISTORY</sub></p>
 
-- **Full legal/compliance-style reports**: risks, licenses, **costs**, and **recommended actions**.  
-- **Past reports** saved for later — open from the dashboard anytime.  
-- **Report comparison** to see how scenarios or iterations differ.  
-- **Compliance timeline** to reason about sequence and timing.  
-- **Apply assistant** to support next steps in the compliance journey.
+- **Risks**, **licenses**, **costs**, and **recommended actions** in one narrative  
+- **Past reports** and **side-by-side comparison**  
+- **Compliance timeline** and **apply assistant** for sequencing and next steps  
 
-### Document vault
+<p align="center"><sub>DOCUMENT VAULT</sub></p>
 
-- **Upload** compliance-related documents and keep them organized.  
-- **Verification workflow** with **custom verification notes** so nothing important is lost in the noise.
+- **Uploads** and **verification** with **custom notes** so context stays attached  
 
-### Workspace tools
+<p align="center"><sub>WORKSPACE</sub></p>
 
-- **Task tracker** for action items tied to your compliance work.  
-- **Action steps** surfaced and trackable in the workspace.  
-- **Comparisons** across reports or setups for better decisions.
+- **Tasks**, **action steps**, and **comparisons** across reports or setups  
 
-### Exports
+<p align="center"><sub>EXPORTS</sub></p>
 
-- **Polished PDF** reports for sharing or archiving.  
-- **Premium Excel** exports for deeper review, filtering, and offline use.
+- **PDF** for sharing and archives  
+- **Premium Excel** for review, filters, and offline work  
 
 ---
 
 ## Screenshots
 
-### Analyze flow
+<p align="center"><sub>ANALYZE</sub></p>
 
-![Analyze Flow](docs/screenshots/analyze-page.png)
+<p align="center">
+  <img src="docs/screenshots/analyze-page.png" alt="LegalEase — analyze flow" width="720" />
+</p>
 
-### Report dashboard
+<p align="center"><sub>REPORT DASHBOARD</sub></p>
 
-![Report Dashboard](docs/screenshots/report-dashboard.png)
+<p align="center">
+  <img src="docs/screenshots/report-dashboard.png" alt="LegalEase — report dashboard" width="720" />
+</p>
 
 ---
 
 ## Technology
 
-LegalEase is built as a modern web application: **React** and **Vite** on the frontend, **FastAPI** and **Python** on the backend, with **SQLite** for data. AI assists report enrichment and document-oriented verification; reporting uses **PDF** and **Excel** generation suitable for founder-ready deliverables. The badges at the top of this README summarize the stack visually.
+**Frontend:** React and Vite, **DM Sans** and **Cormorant Garamond** typography — the same calm, editorial pairing as the interface. **Backend:** FastAPI and Python, **SQLite** for data. **AI** enriches reports and supports document workflows; **ReportLab** and **Excel** generation match the export experience in the app.
+
+<p align="center"><sub>Python Rule Engine · Gemini AI · ReportLab PDF · SQLite</sub></p>
 
 ---
 
 ## Disclaimer
 
-LegalEase AI is an **informational** product. It is **not** a substitute for advice from a qualified lawyer, chartered accountant, or compliance professional. Always verify obligations and filings against current law, regulators, and your own situation.
+LegalEase AI is **informational only**. It is **not** legal, tax, or compliance advice and **not** a substitute for a qualified lawyer, chartered accountant, or professional. Always verify obligations against current law, regulators, and your facts.
 
----
-
-<p align="center">
-  <sub>Made with 🤍</sub>
-</p>
+<p align="center"><sub>Made with 🤍</sub></p>
